@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Load saved settings
-  chrome.storage.sync.get(['openaiApiKey', 'tokenUsage', 'selectedModel'], (result) => {
+  chrome.storage.sync.get(['openaiApiKey', 'tokenUsage', 'selectedModel', 'openaiUrl'], (result) => {
     if (result.openaiApiKey) {
       document.getElementById('api-key').value = result.openaiApiKey;
     }
@@ -15,15 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.tokenUsage) {
       updateTokenDisplay(result.tokenUsage);
     }
+    
+    if (result.openaiUrl) {
+      document.getElementById('openai-url').value = result.openaiUrl;
+    }
   });
 
   // Save settings
   document.querySelector('.save-button').addEventListener('click', () => {
     const apiKey = document.getElementById('api-key').value;
     const selectedModel = document.getElementById('model').value;
-    chrome.storage.sync.set({ 
+    const openaiUrl = document.getElementById('openai-url').value;
+    
+    chrome.storage.sync.set({
       openaiApiKey: apiKey,
-      selectedModel: selectedModel
+      selectedModel: selectedModel || 'gpt-4o-mini',
+      openaiUrl: openaiUrl || 'https://api.openai.com/v1/'
     }, () => {
       // Show success message
       const button = document.querySelector('.save-button');
@@ -44,4 +51,4 @@ function updateTokenDisplay(usage) {
     ? Math.round(usage.totalTokens / usage.requestCount) 
     : 0;
   document.getElementById('avg-tokens').textContent = avg.toLocaleString();
-} 
+}

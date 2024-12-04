@@ -16,7 +16,14 @@ function createSidebar() {
       </div>
       <div class="input-section">
         <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
-        <button id="ask-button">Ask Question</button>
+        <div class="bottom-controls">
+          <button id="ask-button">Ask Question</button>
+          <select id="model-selector" class="model-selector">
+            <option value="gpt-4o-mini">GPT-4o-mini</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-o1-mini">GPT-o1 mini</option>
+          </select>
+        </div>
       </div>
     </div>
   `;
@@ -72,12 +79,27 @@ function addMessageToChat(role, content, timestamp = Date.now()) {
     .replace(/>/g, '&gt;');
   messageContent.innerHTML = parseMarkdown(sanitizedContent);
   
+  // Add message content first
+  messageDiv.appendChild(messageContent);
+
+  // Create footer div for time and model info
+  const messageFooter = document.createElement('div');
+  messageFooter.className = 'message-footer';
+  
   const timeDiv = document.createElement('div');
   timeDiv.className = 'message-time';
   timeDiv.textContent = new Date(timestamp).toLocaleTimeString();
+  messageFooter.appendChild(timeDiv);
   
-  messageDiv.appendChild(messageContent);
-  messageDiv.appendChild(timeDiv);
+  if (role === 'assistant') {
+    const modelInfo = document.createElement('div');
+    modelInfo.className = 'model-info';
+    const currentModel = document.getElementById('model-selector').value;
+    modelInfo.textContent = currentModel;
+    messageFooter.appendChild(modelInfo);
+  }
+  
+  messageDiv.appendChild(messageFooter);
   
   // Insert before the clear button
   const clearButton = answerDiv.querySelector('.clear-chat');
@@ -94,6 +116,7 @@ function setupEventListeners() {
   const closeButton = document.querySelector('.close-button');
   const askButton = document.getElementById('ask-button');
   const clearButton = document.querySelector('.clear-chat');
+  const modelSelector = document.getElementById('model-selector');
 
   toggleButton.addEventListener('click', () => {
     sidebar.classList.toggle('open');
@@ -118,6 +141,17 @@ function setupEventListeners() {
           loadChatHistory();
         });
       });
+    }
+  });
+
+  modelSelector.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ selectedModel: e.target.value });
+  });
+
+  // Set initial model selection
+  chrome.storage.sync.get(['selectedModel'], (result) => {
+    if (result.selectedModel) {
+      modelSelector.value = result.selectedModel;
     }
   });
 }
@@ -149,7 +183,7 @@ async function handleQuestion() {
     return;
   }
 
-  const { openaiApiKey } = await chrome.storage.sync.get(['openaiApiKey']);
+  const { openaiApiKey, openaiUrl } = await chrome.storage.sync.get(['openaiApiKey', 'openaiUrl']);
   if (!openaiApiKey) {
     alert('Please set your OpenAI API key in the extension settings (click extension icon).');
     return;
@@ -158,17 +192,19 @@ async function handleQuestion() {
   // Add user message to chat
   addMessageToChat('user', question);
   
-  // Create streaming message container
-  const { messageDiv, messageContent } = createStreamingMessage();
-  const clearButton = document.getElementById('answer').querySelector('.clear-chat');
-  document.getElementById('answer').insertBefore(messageDiv, clearButton);
-  
   try {
     const content = getPageContent();
     const { selectedModel } = await chrome.storage.sync.get(['selectedModel']);
     const model = selectedModel || 'gpt-4o-mini';
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Create streaming message container with model info
+    const { messageDiv, messageContent } = createStreamingMessage(model);
+    const clearButton = document.getElementById('answer').querySelector('.clear-chat');
+    document.getElementById('answer').insertBefore(messageDiv, clearButton);
+    
+    const apiUrl = (openaiUrl || 'https://api.openai.com/v1/') + 'chat/completions';
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -268,7 +304,7 @@ function parseMarkdown(content) {
 }
 
 // Create a streaming message element
-function createStreamingMessage() {
+function createStreamingMessage(model) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'chat-message assistant-message';
   
@@ -276,13 +312,23 @@ function createStreamingMessage() {
   messageContent.className = 'message-content streaming';
   messageDiv.appendChild(messageContent);
   
+  const messageFooter = document.createElement('div');
+  messageFooter.className = 'message-footer';
+  
   const timeDiv = document.createElement('div');
   timeDiv.className = 'message-time';
   timeDiv.textContent = new Date().toLocaleTimeString();
-  messageDiv.appendChild(timeDiv);
+  messageFooter.appendChild(timeDiv);
+  
+  const modelInfo = document.createElement('div');
+  modelInfo.className = 'model-info';
+  modelInfo.textContent = model;
+  messageFooter.appendChild(modelInfo);
+  
+  messageDiv.appendChild(messageFooter);
   
   return { messageDiv, messageContent };
 }
 
 // Initialize the sidebar
-createSidebar(); 
+createSidebar();

@@ -26,7 +26,8 @@
       font-weight: 500;
     }
     
-    #api-key {
+    #api-key,
+    #openai-url {
       width: 100%;
       padding: 8px 12px;
       border: 1px solid #cbd5e1;
@@ -35,7 +36,8 @@
       box-sizing: border-box;
     }
     
-    #api-key:focus {
+    #api-key:focus,
+    #openai-url:focus {
       outline: none;
       border-color: #2962ff;
       box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.1);
@@ -95,9 +97,13 @@
     <input type="password" id="api-key" spellcheck="false">
   </div>
   <div class="input-group">
+    <label for="openai-url">OpenAI API URL (Optional)</label>
+    <input type="text" id="openai-url" spellcheck="false" placeholder="https://api.openai.com/v1/">
+  </div>
+  <div class="input-group">
     <label for="model">AI Model</label>
     <select id="model">
-      <option value="gpt-4o-mini">GPT-4o-mini</option>
+      <option value="gpt-4o-mini" selected>GPT-4o-mini</option>
       <option value="gpt-4o">GPT-4o</option>
       <option value="gpt-o1-mini">GPT-o1-mini</option>
     </select>
@@ -110,4 +116,4 @@
   </div>
   <script src="settings.js"></script>
 </body>
-</html> 
+</html>

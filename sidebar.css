@@ -146,6 +146,8 @@
   font-size: 15px;
   font-weight: 500;
   transition: all 0.2s ease;
+  min-width: 120px;
+  margin-top: 0;
 }
 
 #ask-button:hover {
@@ -188,9 +190,9 @@
 }
 
 .message-time {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .clear-chat {
@@ -368,4 +370,57 @@
 
 .message-content th {
   background-color: #f8fafc;
-} 
+}
+
+.bottom-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.model-selector {
+  width: auto;
+  flex: 0 1 140px;
+  padding: 8px 24px 8px 12px;
+  background: #f8fafc url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.model-selector:hover {
+  border-color: #94a3b8;
+  background-color: #fff;
+}
+
+.model-selector:focus {
+  outline: none;
+  border-color: #2962ff;
+  box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.1);
+  background-color: #fff;
+}
+
+.model-info {
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+.message-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.user-message .message-footer {
+  justify-content: flex-end;
+}
