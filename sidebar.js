@@ -246,6 +246,7 @@ async function handleQuestion() {
       body: JSON.stringify({
         model: model,
         stream: true,
+        stream_options: {"include_usage": true},
         messages: [
           {
             role: "system",
