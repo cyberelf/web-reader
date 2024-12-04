@@ -1,3 +1,28 @@
+/* Theme variables */
+:root {
+  --light-bg: #ffffff;
+  --light-text: #333333;
+  --light-border: #e0e0e0;
+  --light-hover: #f5f5f5;
+  --light-message-bg: #f1f5f9;
+  --light-user-message-bg: #e8f0fe;
+  --light-button-bg: #2962ff;
+  --light-button-text: #ffffff;
+  --light-button-hover: #1e4bd8;
+  --light-title: #1a1f36;
+  
+  --dark-bg: #222222;
+  --dark-text: #e0e0e0;
+  --dark-border: #444444;
+  --dark-hover: #333333;
+  --dark-message-bg: #2a2a2a;
+  --dark-user-message-bg: #383838;
+  --dark-button-bg: #2962ff;
+  --dark-button-text: #ffffff;
+  --dark-button-hover: #1e4bd8;
+  --dark-title: #ffffff;
+}
+
 #page-reader-sidebar {
   position: fixed;
   top: 0;
@@ -15,14 +40,15 @@
   right: 0;
 }
 
+/* Separate Ask AI toggle button styles */
 #page-reader-toggle {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 10001;
   padding: 10px 16px;
-  background: #2962ff;
-  color: white;
+  background: var(--light-button-bg);
+  color: var(--light-button-text);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -32,9 +58,18 @@
 }
 
 #page-reader-toggle:hover {
-  background: #1e4bd8;
+  background: var(--light-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#page-reader-toggle.theme-dark {
+  background: var(--dark-button-bg);
+  color: var(--dark-button-text);
+}
+
+#page-reader-toggle.theme-dark:hover {
+  background: var(--dark-button-hover);
 }
 
 .sidebar-container {
@@ -52,12 +87,12 @@
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e0e4e8;
+  border-bottom: 1px solid var(--light-border);
 }
 
 .sidebar-header h2 {
   margin: 0;
-  color: #1a1f36;
+  color: var(--light-title);
   font-size: 20px;
   font-weight: 600;
 }
@@ -136,10 +171,11 @@
   color: #64748b;
 }
 
+/* Update ask button styles */
 #ask-button {
   padding: 12px 20px;
-  background-color: #2962ff;
-  color: white;
+  background-color: var(--light-button-bg);
+  color: var(--light-button-text);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -151,9 +187,18 @@
 }
 
 #ask-button:hover {
-  background-color: #1e4bd8;
+  background-color: var(--light-button-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(41, 98, 255, 0.2);
+}
+
+.theme-dark #ask-button {
+  background-color: var(--dark-button-bg);
+  color: var(--dark-button-text);
+}
+
+.theme-dark #ask-button:hover {
+  background-color: var(--dark-button-hover);
 }
 
 #answer {
@@ -423,4 +468,143 @@
 
 .user-message .message-footer {
   justify-content: flex-end;
+}
+
+/* Theme styles */
+.theme-light {
+  background-color: var(--light-bg);
+  color: var(--light-text);
+}
+
+.theme-light .sidebar-container {
+  background: var(--light-bg);
+  border-color: var(--light-border);
+}
+
+.theme-light .chat-message {
+  border-color: var(--light-border);
+}
+
+.theme-light .assistant-message {
+  background-color: var(--light-message-bg);
+}
+
+.theme-light .user-message {
+  background-color: var(--light-user-message-bg);
+}
+
+.theme-light #content-preview {
+  background-color: var(--light-bg);
+  border-color: var(--light-border);
+}
+
+.theme-light #answer {
+  background-color: var(--light-bg);
+  border-color: var(--light-border);
+}
+
+.theme-dark {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+.theme-dark .sidebar-container {
+  background: var(--dark-bg);
+  border-color: var(--dark-border);
+}
+
+.theme-dark .chat-message {
+  border-color: var(--dark-border);
+}
+
+.theme-dark .assistant-message {
+  background-color: var(--dark-message-bg);
+}
+
+.theme-dark .user-message {
+  background-color: var(--dark-user-message-bg);
+}
+
+.theme-dark #content-preview,
+.theme-dark #answer,
+.theme-dark #question,
+.theme-dark .theme-selector,
+.theme-dark .model-selector {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+  border-color: var(--dark-border);
+}
+
+/* Header controls */
+.header-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.theme-selector {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--light-border);
+  font-size: 12px;
+  background-color: var(--light-bg);
+  color: var(--light-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-selector:hover {
+  border-color: var(--light-button-bg);
+}
+
+/* Light theme */
+.theme-light {
+  background-color: var(--light-bg);
+  color: var(--light-text);
+}
+
+.theme-light .sidebar-container {
+  border-color: var(--light-border);
+}
+
+.theme-light .chat-message {
+  border-color: var(--light-border);
+}
+
+/* Dark theme */
+.theme-dark {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+.theme-dark .sidebar-container {
+  border-color: var(--dark-border);
+}
+
+.theme-dark .chat-message {
+  border-color: var(--dark-border);
+}
+
+.theme-dark .theme-selector {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+  border-color: var(--dark-border);
+}
+
+.theme-dark .theme-selector:hover {
+  border-color: var(--dark-button-bg);
+}
+
+.theme-dark .sidebar-header {
+  border-bottom-color: var(--dark-border);
+}
+
+.theme-dark .sidebar-header h2 {
+  color: var(--dark-title);
+}
+
+.theme-dark button {
+  background-color: var(--dark-hover);
+  color: var(--dark-text);
+  border-color: var(--dark-border);
 }

@@ -8,7 +8,14 @@ function createSidebar() {
     <div class="sidebar-container">
       <div class="sidebar-header">
         <h2>Page Reader Assistant</h2>
-        <button class="close-button" aria-label="Close sidebar">×</button>
+        <div class="header-controls">
+          <select id="theme-selector" class="theme-selector">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="auto">Auto (System)</option>
+          </select>
+          <button class="close-button" aria-label="Close sidebar">×</button>
+        </div>
       </div>
       <div id="content-preview"></div>
       <div id="answer">
@@ -154,6 +161,32 @@ function setupEventListeners() {
       modelSelector.value = result.selectedModel;
     }
   });
+
+  const themeSelector = document.getElementById('theme-selector');
+  
+  // Set initial theme
+  chrome.storage.sync.get(['theme'], (result) => {
+    const savedTheme = result.theme || 'auto';
+    themeSelector.value = savedTheme;
+    applyTheme(savedTheme);
+  });
+
+  themeSelector.addEventListener('change', (e) => {
+    const theme = e.target.value;
+    chrome.storage.sync.set({ theme });
+    applyTheme(theme);
+  });
+
+  // Listen for system theme changes if using auto theme
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      chrome.storage.sync.get(['theme'], (result) => {
+        if (result.theme === 'auto') {
+          applyTheme('auto');
+        }
+      });
+    });
+  }
 }
 
 // Get the page content
@@ -328,6 +361,23 @@ function createStreamingMessage(model) {
   messageDiv.appendChild(messageFooter);
   
   return { messageDiv, messageContent };
+}
+
+function applyTheme(theme) {
+  const sidebar = document.getElementById('page-reader-sidebar');
+  const toggle = document.getElementById('page-reader-toggle');
+  
+  // Remove existing theme classes
+  sidebar.classList.remove('theme-light', 'theme-dark');
+  toggle.classList.remove('theme-light', 'theme-dark');
+  
+  let effectiveTheme = theme;
+  if (theme === 'auto') {
+    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  
+  sidebar.classList.add(`theme-${effectiveTheme}`);
+  toggle.classList.add(`theme-${effectiveTheme}`);
 }
 
 // Initialize the sidebar
