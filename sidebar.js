@@ -32,6 +32,16 @@ function createSidebar() {
           </select>
         </div>
       </div>
+      <div class="modal" id="clear-confirm-modal">
+        <div class="modal-content">
+          <h3>Clear Chat History</h3>
+          <p>Are you sure you want to clear the chat history for this page?</p>
+          <div class="modal-actions">
+            <button class="modal-button cancel-button">Cancel</button>
+            <button class="modal-button confirm-button">Clear History</button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -125,9 +135,10 @@ function setupEventListeners() {
   const clearButton = document.querySelector('.clear-chat');
   const modelSelector = document.getElementById('model-selector');
 
+  // Fix toggle button to always open sidebar
   toggleButton.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    if (sidebar.classList.contains('open')) {
+    if (!sidebar.classList.contains('open')) {
+      sidebar.classList.add('open');
       updateContentPreview();
     }
   });
@@ -139,16 +150,32 @@ function setupEventListeners() {
   askButton.addEventListener('click', handleQuestion);
 
   clearButton.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear the chat history for this page?')) {
+    const modal = document.getElementById('clear-confirm-modal');
+    modal.classList.add('show');
+
+    const cancelButton = modal.querySelector('.cancel-button');
+    const confirmButton = modal.querySelector('.confirm-button');
+
+    const closeModal = () => {
+      modal.classList.remove('show');
+      cancelButton.removeEventListener('click', closeModal);
+      confirmButton.removeEventListener('click', handleClear);
+    };
+
+    const handleClear = () => {
       const currentUrl = window.location.href;
       chrome.storage.sync.get(['urlChatHistory'], (result) => {
         const urlChatHistory = result.urlChatHistory || {};
         delete urlChatHistory[currentUrl];
         chrome.storage.sync.set({ urlChatHistory }, () => {
           loadChatHistory();
+          closeModal();
         });
       });
-    }
+    };
+
+    cancelButton.addEventListener('click', closeModal);
+    confirmButton.addEventListener('click', handleClear);
   });
 
   modelSelector.addEventListener('change', (e) => {
@@ -179,8 +206,9 @@ function setupEventListeners() {
 
   // Listen for system theme changes if using auto theme
   if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      chrome.storage.sync.get(['theme'], (result) => {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.addListener(e => {
+      chrome.storage.sync.get(['theme'], result => {
         if (result.theme === 'auto') {
           applyTheme('auto');
         }
@@ -344,23 +372,16 @@ function createStreamingMessage(model) {
   
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content streaming';
-  messageDiv.appendChild(messageContent);
   
   const messageFooter = document.createElement('div');
   messageFooter.className = 'message-footer';
   
-  const timeDiv = document.createElement('div');
-  timeDiv.className = 'message-time';
-  timeDiv.textContent = new Date().toLocaleTimeString();
-  messageFooter.appendChild(timeDiv);
+  messageFooter.innerHTML = `
+    <div class="message-time">${new Date().toLocaleTimeString()}</div>
+    <div class="model-info">${model}</div>
+  `;
   
-  const modelInfo = document.createElement('div');
-  modelInfo.className = 'model-info';
-  modelInfo.textContent = model;
-  messageFooter.appendChild(modelInfo);
-  
-  messageDiv.appendChild(messageFooter);
-  
+  messageDiv.append(messageContent, messageFooter);
   return { messageDiv, messageContent };
 }
 
@@ -368,17 +389,17 @@ function applyTheme(theme) {
   const sidebar = document.getElementById('page-reader-sidebar');
   const toggle = document.getElementById('page-reader-toggle');
   
-  // Remove existing theme classes
-  sidebar.classList.remove('theme-light', 'theme-dark');
-  toggle.classList.remove('theme-light', 'theme-dark');
+  const effectiveTheme = theme === 'auto' 
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
   
-  let effectiveTheme = theme;
-  if (theme === 'auto') {
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
+  document.documentElement.setAttribute('data-theme', effectiveTheme);
   
-  sidebar.classList.add(`theme-${effectiveTheme}`);
-  toggle.classList.add(`theme-${effectiveTheme}`);
+  // Preserve the 'open' class if it exists
+  const isOpen = sidebar.classList.contains('open');
+  sidebar.className = `page-reader-sidebar theme-${effectiveTheme}${isOpen ? ' open' : ''}`;
+  
+  toggle.className = `page-reader-toggle theme-${effectiveTheme}`;
 }
 
 // Initialize the sidebar

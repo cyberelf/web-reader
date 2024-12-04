@@ -20,24 +20,24 @@
   --dark-button-bg: #2962ff;
   --dark-button-text: #ffffff;
   --dark-button-hover: #1e4bd8;
-  --dark-title: #ffffff;
+
+  --light-code-bg: #f8fafc;
+  --light-inline-code-bg: #f1f5f9;
+  --light-blockquote-border: #cbd5e1;
+  --light-blockquote-text: #64748b;
+  
+  --dark-code-bg: #1e293b;
+  --dark-inline-code-bg: #334155;
+  --dark-blockquote-border: #475569;
+  --dark-blockquote-text: #94a3b8;
+  --dark-title: #e2e8f0;
 }
 
-#page-reader-sidebar {
-  position: fixed;
-  top: 0;
-  right: -450px;
-  width: 450px;
-  height: 100vh;
-  background: #ffffff;
-  box-shadow: 0 0 20px rgba(0,0,0,0.15);
-  z-index: 10000;
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-}
+/* Remove collapse button styles section */
 
-#page-reader-sidebar.open {
-  right: 0;
+/* Hide Ask AI button when sidebar is open */
+#page-reader-sidebar.open ~ #page-reader-toggle {
+  display: none;
 }
 
 /* Separate Ask AI toggle button styles */
@@ -70,6 +70,23 @@
 
 #page-reader-toggle.theme-dark:hover {
   background: var(--dark-button-hover);
+}
+
+#page-reader-sidebar {
+  position: fixed;
+  top: 0;
+  right: -450px; /* Start off-screen */
+  width: 450px;
+  height: 100vh;
+  background: var(--light-bg);
+  box-shadow: 0 0 20px rgba(0,0,0,0.15);
+  z-index: 10000;
+  transition: right 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+#page-reader-sidebar.open {
+  right: 0;
 }
 
 .sidebar-container {
@@ -351,7 +368,7 @@
 }
 
 .message-content pre {
-  background: #f1f5f9;
+  background: var(--light-code-bg);
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
@@ -359,13 +376,21 @@
   word-wrap: break-word;
 }
 
+.theme-dark .message-content pre {
+  background: var(--dark-code-bg);
+}
+
 .message-content code {
   font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   font-size: 0.9em;
-  background: #f1f5f9;
+  background: var(--light-inline-code-bg);
   padding: 2px 4px;
   border-radius: 4px;
   word-wrap: break-word;
+}
+
+.theme-dark .message-content code {
+  background: var(--dark-inline-code-bg);
 }
 
 .message-content pre code {
@@ -382,8 +407,13 @@
 .message-content blockquote {
   margin: 0 0 1em 0;
   padding-left: 1em;
-  border-left: 3px solid #cbd5e1;
-  color: #64748b;
+  border-left: 3px solid var(--light-blockquote-border);
+  color: var(--light-blockquote-text);
+}
+
+.theme-dark .message-content blockquote {
+  border-left-color: var(--dark-blockquote-border);
+  color: var(--dark-blockquote-text);
 }
 
 .message-content h1,
@@ -607,4 +637,88 @@
   background-color: var(--dark-hover);
   color: var(--dark-text);
   border-color: var(--dark-border);
+}
+
+.modal {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 10002;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--light-bg);
+  border-radius: 12px;
+  padding: 24px;
+  width: 80%;
+  max-width: 320px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.theme-dark .modal-content {
+  background: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+.modal-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-content p {
+  margin: 0 0 24px 0;
+  color: var(--light-text);
+  line-height: 1.5;
+}
+
+.theme-dark .modal-content p {
+  color: var(--dark-text);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-button {
+  background: var(--light-hover);
+  color: var(--light-text);
+  border: 1px solid var(--light-border);
+}
+
+.confirm-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+.confirm-button:hover {
+  background: #dc2626;
+}
+
+.theme-dark .cancel-button {
+  background: var(--dark-hover);
+  color: var(--dark-text);
+  border: 1px solid var(--dark-border);
 }
