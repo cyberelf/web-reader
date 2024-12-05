@@ -18,7 +18,7 @@ function createSidebar() {
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
           </button>
-          <button class="close-button" aria-label="Close sidebar">×</button>
+          <button class="ai-sidebar-close-button" aria-label="Close sidebar">×</button>
         </div>
       </div>
       <div class="context-controls">
@@ -155,7 +155,7 @@ function addMessageToChat(role, content, timestamp = Date.now()) {
 function setupEventListeners() {
   const sidebar = document.getElementById('page-reader-sidebar');
   const toggleButton = document.getElementById('page-reader-toggle');
-  const closeButton = document.querySelector('.close-button');
+  const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
   const askButton = document.getElementById('ask-button');
   const clearButton = document.querySelector('.clear-chat');
   const modelSelector = document.getElementById('model-selector');
@@ -188,9 +188,16 @@ function setupEventListeners() {
     }
   });
 
-  closeButton.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-  });
+  if (closeButton) {
+    closeButton.addEventListener('click', () => {
+      console.log('Close button clicked'); // For debugging
+      if (sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+      }
+    });
+  } else {
+    console.error('Close button not found'); // For debugging
+  }
 
   askButton.addEventListener('click', handleQuestion);
 
