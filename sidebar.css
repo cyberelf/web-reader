@@ -308,17 +308,20 @@
 }
 
 .modal-content {
-  background: var(--light-bg);
+  background: var(--bg);
   border-radius: 12px;
   padding: 24px;
   width: 80%;
   max-width: 320px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
 }
 
 .theme-dark .modal-content {
-  background: var(--dark-bg);
-  color: var(--dark-text);
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .modal-content h3 {
@@ -334,7 +337,8 @@
 }
 
 .theme-dark .modal-content p {
-  color: var(--dark-text);
+  color: var(--text);
+  opacity: 1;
 }
 
 .modal-actions {
@@ -835,20 +839,20 @@
 
 /* Dark theme styles */
 #page-reader-sidebar.theme-dark {
-  --bg: #222222;
-  --text: #e0e0e0;
-  --border: #444444;
-  --hover: #333333;
-  --message-bg: #1e293b;
-  --user-message-bg: #334155;
-  --button-bg: #2962ff;
-  --button-text: #ffffff;
+  --bg: #1a1a1a;          /* Darker background */
+  --text: #e8e8e8;        /* Lighter text */
+  --border: #3d3d3d;      /* Slightly lighter border */
+  --hover: #2a2a2a;       /* Lighter hover state */
+  --message-bg: #2a2f3c;  /* Lighter message background */
+  --user-message-bg: #3a4255;  /* Lighter user message background */
+  --button-bg: #2962ff;   /* Keep button color */
+  --button-text: #ffffff; /* Keep button text color */
   --button-hover: #1e4bd8;
-  --title: #e2e8f0;
-  --code-bg: #1e293b;
-  --inline-code-bg: #334155;
-  --blockquote-border: #475569;
-  --blockquote-text: #94a3b8;
+  --title: #f0f0f0;       /* Lighter title text */
+  --code-bg: #2a2f3c;     /* Lighter code background */
+  --inline-code-bg: #3a4255;  /* Lighter inline code background */
+  --blockquote-border: #4a5569;
+  --blockquote-text: #a3b3c9;
 }
 
 /* Update component styles to use the new variables */

@@ -235,6 +235,20 @@ function setupEventListeners() {
   });
 
   setupContextModeHandlers();
+
+  // Add Enter key handler for the question input
+  const questionInput = document.getElementById('question');
+  questionInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent default to avoid new line
+      if (questionInput.value.trim()) {
+        handleQuestion();
+      }
+    }
+  });
+
+  // Add placeholder hint for Enter/Shift+Enter
+  questionInput.placeholder = "What would you like to know about this page?\nPress Enter to send, Shift+Enter for new line";
 }
 
 // Get the page content
