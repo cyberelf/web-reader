@@ -4,9 +4,13 @@
   "version": "1.0",
   "description": "Ask questions about the current webpage content",
   "permissions": [
-    "activeTab",
+    "storage",
     "scripting",
-    "storage"
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "action": {
     "default_icon": {
@@ -23,5 +27,8 @@
       "css": ["sidebar.css"],
       "js": ["lib/marked.min.js", "sidebar.js"]
     }
-  ]
-} 
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
