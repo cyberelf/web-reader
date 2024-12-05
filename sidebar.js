@@ -775,3 +775,19 @@ async function svgToPng(svgText) {
 
 // Initialize the sidebar
 createSidebar();
+
+document.addEventListener('imageUploaded', function(e) {
+    const imageData = e.detail.image;
+    
+    // If you have a chat input area, you can append the image
+    const chatInput = document.querySelector('.chat-input'); // adjust selector as needed
+    if (chatInput) {
+        const imgElement = document.createElement('img');
+        imgElement.src = imageData;
+        imgElement.style.maxWidth = '200px';
+        imgElement.style.maxHeight = '200px';
+        
+        // Insert the image before the input
+        chatInput.parentNode.insertBefore(imgElement, chatInput);
+    }
+});
