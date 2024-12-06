@@ -1,0 +1,221 @@
+/* Base styles */
+body {
+  width: 300px;
+  padding: 12px;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+}
+
+h2 {
+  margin: 0 0 12px 0;
+  color: #1a1f36;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Input groups */
+.input-group {
+  margin-bottom: 12px;
+}
+
+label {
+  display: block;
+  margin-bottom: 4px;
+  color: #1e293b;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+#api-key,
+#openai-url,
+#model {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+#api-key:focus,
+#openai-url:focus,
+#model:focus {
+  outline: none;
+  border-color: #2962ff;
+  box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.1);
+}
+
+/* Custom prompts section */
+.custom-prompts-container {
+  margin-top: 8px;
+}
+
+.custom-prompt-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.custom-prompt-item.hidden {
+  display: none;
+}
+
+.prompt-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.prompt-command {
+  width: 100% !important;
+}
+
+.prompt-text {
+  width: 100% !important;
+}
+
+.prompt-inputs input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.prompt-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Button base styles */
+.ai-button-base {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Primary button style */
+.ai-primary-button {
+  background-color: #2962ff;
+  color: white;
+  border: none;
+}
+
+.ai-primary-button:hover {
+  background-color: #1e4bd8;
+}
+
+/* Danger button style */
+.ai-danger-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+}
+
+.ai-danger-button:hover {
+  background-color: #dc2626;
+}
+
+/* Add Custom Prompt button */
+.ai-add-prompt {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.ai-add-prompt:before {
+  content: "+";
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.ai-add-prompt:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+/* Settings sections */
+.settings-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.settings-section h3 {
+  margin: 0 0 8px 0;
+  color: #1a1f36;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Save button */
+.save-button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* Token usage section */
+.token-usage {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.token-usage p {
+  margin: 2px 0;
+  color: #475569;
+}
+
+/* Prompt action buttons container */
+.prompt-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Make buttons in prompt actions more compact */
+.prompt-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  height: 24px;
+}

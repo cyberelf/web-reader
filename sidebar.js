@@ -1,5 +1,29 @@
 let markedReady = false;
 
+// Add these functions near the top of sidebar.js
+let PROMPT_SHORTCUTS = {
+  '/summarize': 'Please provide a concise summary of this content, highlighting the main points and key takeaways.',
+  '/explain': 'Please explain this content in simple terms, breaking down any complex concepts and providing clear explanations.',
+  '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
+};
+
+async function loadCustomPrompts() {
+  const { customPrompts = {} } = await chrome.storage.sync.get(['customPrompts']);
+  PROMPT_SHORTCUTS = { ...PROMPT_SHORTCUTS, ...customPrompts };
+}
+
+function handleShortcut(input) {
+  const command = Object.keys(PROMPT_SHORTCUTS).find(cmd => 
+    input.trim().toLowerCase().startsWith(cmd.toLowerCase())
+  );
+  if (command) {
+    const customText = input.slice(command.length).trim();
+    const basePrompt = PROMPT_SHORTCUTS[command];
+    return customText ? `${basePrompt}\nAdditional context: ${customText}` : basePrompt;
+  }
+  return null;
+}
+
 // Create and inject the sidebar HTML
 function createSidebar() {
   const sidebar = document.createElement('div');
@@ -89,23 +113,57 @@ function createSidebar() {
   answer.classList.add('custom-scrollbar');
 }
 
-// Load chat history from storage
+// Function to save chat history
+async function saveChatHistory(currentUrl, history) {
+  const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
+  try {
+    await chrome.storage.local.set({
+      [`chat_history_${urlHash}`]: history
+    });
+  } catch (error) {
+    console.error('Failed to save chat history:', error);
+  }
+}
+
+// Function to load chat history
 async function loadChatHistory() {
-  const currentUrl = window.location.href;
-  const { urlChatHistory = {} } = await chrome.storage.sync.get(['urlChatHistory']);
-  const chatHistory = urlChatHistory[currentUrl] || [];
-  
-  const answerDiv = document.getElementById('answer');
-  
-  // Clear existing messages except the clear button
-  const clearButton = answerDiv.querySelector('.clear-chat');
-  answerDiv.innerHTML = '';
-  answerDiv.appendChild(clearButton);
-  
-  // Add each message to the chat
-  chatHistory.forEach(message => {
-    addMessageToChat(message.role, message.content, message.timestamp);
-  });
+  try {
+    const currentUrl = window.location.href;
+    const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
+    const key = `chat_history_${urlHash}`;
+    
+    const answerDiv = document.getElementById('answer');
+    if (!answerDiv) return;
+    
+    // Clear existing messages except the clear button
+    const clearButton = answerDiv.querySelector('.clear-chat');
+    answerDiv.innerHTML = '';
+    if (clearButton) {
+      answerDiv.appendChild(clearButton);
+    }
+
+    // Load chat history from storage
+    const result = await chrome.storage.local.get([key]);
+    const chatHistory = result[key] || [];
+    
+    // Add each message to the chat
+    chatHistory.forEach(message => {
+      if (message) {
+        const role = message.r || message.role;
+        const content = message.c || message.content;
+        const timestamp = message.t || message.timestamp;
+        
+        if (role && content) {
+          addMessageToChat(role, content, timestamp);
+        }
+      }
+    });
+
+    // Scroll to bottom
+    answerDiv.scrollTop = answerDiv.scrollHeight;
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+  }
 }
 
 // Add a new message to the chat
@@ -181,9 +239,10 @@ function setupEventListeners() {
   });
 
   // Fix toggle button to always open sidebar
-  toggleButton.addEventListener('click', () => {
+  toggleButton.addEventListener('click', async () => {
     if (!sidebar.classList.contains('open')) {
       sidebar.classList.add('open');
+      await loadChatHistory(); // Load chat history when sidebar is opened
       updateContentPreview();
     }
   });
@@ -214,16 +273,15 @@ function setupEventListeners() {
       confirmButton.removeEventListener('click', handleClear);
     };
 
-    const handleClear = () => {
+    const handleClear = async () => {
       const currentUrl = window.location.href;
-      chrome.storage.sync.get(['urlChatHistory'], (result) => {
-        const urlChatHistory = result.urlChatHistory || {};
-        delete urlChatHistory[currentUrl];
-        chrome.storage.sync.set({ urlChatHistory }, () => {
-          loadChatHistory();
-          closeModal();
-        });
-      });
+      const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
+      const key = `chat_history_${urlHash}`;
+      
+      // Clear history by setting empty array
+      await chrome.storage.local.remove(key);
+      loadChatHistory();
+      closeModal();
     };
 
     cancelButton.addEventListener('click', closeModal);
@@ -246,8 +304,22 @@ function setupEventListeners() {
   // Add Enter key handler for the question input
   const questionInput = document.getElementById('question');
   questionInput.addEventListener('keydown', (e) => {
+    const autocompleteList = document.querySelector('.shortcut-autocomplete');
+    const isAutocompleteVisible = autocompleteList.style.display === 'block';
+    const autocompleteItems = autocompleteList.querySelectorAll('.autocomplete-item');
+    
+    if (isAutocompleteVisible && e.key === 'Tab') {
+      e.preventDefault();
+      if (autocompleteItems.length > 0) {
+        const subcommand = autocompleteItems[0].querySelector('.command').textContent;
+        questionInput.value = subcommand + ' ';
+        autocompleteList.style.display = 'none';
+      }
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default to avoid new line
+      e.preventDefault();
       if (questionInput.value.trim()) {
         handleQuestion();
       }
@@ -256,6 +328,11 @@ function setupEventListeners() {
 
   // Add placeholder hint for Enter/Shift+Enter
   questionInput.placeholder = "What would you like to know about this page?\nPress Enter to send, Shift+Enter for new line";
+
+  setupShortcutAutocomplete();
+
+  // Also load chat history when the page loads
+  loadChatHistory();
 }
 
 // Get the page content
@@ -298,14 +375,27 @@ function updateContentPreview() {
   }
 }
 
-// Handle question submission
+// Update the handleQuestion function
 async function handleQuestion() {
-  const question = document.getElementById('question').value;
+  const questionInput = document.getElementById('question');
+  let question = questionInput.value.trim();
   const mode = document.getElementById('context-mode').value;
   
+  // Check if it's just a slash or if autocomplete is visible
+  const autocompleteList = document.querySelector('.shortcut-autocomplete');
+  if (question === '/' || autocompleteList.style.display === 'block') {
+    return;
+  }
+
   if (!question) {
     alert('Please enter a question.');
     return;
+  }
+
+  // Check for shortcuts
+  const shortcutPrompt = handleShortcut(question);
+  if (shortcutPrompt) {
+    question = shortcutPrompt;
   }
 
   const { openaiApiKey, openaiUrl } = await chrome.storage.sync.get(['openaiApiKey', 'openaiUrl']);
@@ -421,24 +511,50 @@ async function handleQuestion() {
       }
     }
     
-    // Save to chat history
+    // Save to chat history file
     const currentUrl = window.location.href;
-    const { urlChatHistory = {} } = await chrome.storage.sync.get(['urlChatHistory']);
-    const currentUrlHistory = urlChatHistory[currentUrl] || [];
-    currentUrlHistory.push(
-      { role: 'user', content: question, timestamp: Date.now() },
-      { role: 'assistant', content: fullResponse, timestamp: Date.now() }
-    );
-    urlChatHistory[currentUrl] = currentUrlHistory;
-    chrome.storage.sync.set({ urlChatHistory });
+    const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
+    const filename = `chat_history_${urlHash}.json`;
+    
+    let currentHistory = [];
+    try {
+      const response = await fetch(chrome.runtime.getURL(`histories/${filename}`));
+      if (response.ok) {
+        currentHistory = await response.json();
+      }
+    } catch (error) {
+      // No existing history, start fresh
+    }
+    
+    // Add new messages
+    const newMessages = [
+      {
+        r: 'user',
+        c: question,
+        t: Date.now()
+      },
+      {
+        r: 'assistant',
+        c: fullResponse,
+        t: Date.now()
+      }
+    ];
+
+    // Keep only the last 50 messages
+    const maxHistoryLength = 50;
+    const updatedHistory = [...currentHistory, ...newMessages]
+      .slice(-maxHistoryLength);
+
+    // Save to file
+    await saveChatHistory(currentUrl, updatedHistory);
+
+    // Clear the input
+    questionInput.value = '';
 
   } catch (error) {
     console.error('Error:', error);
     addMessageToChat('assistant', `Error: ${error.message}`);
   }
-  
-  // Clear the input
-  document.getElementById('question').value = '';
 }
 
 // Parse markdown safely
@@ -770,6 +886,147 @@ async function svgToPng(svgText) {
     
     // Load the SVG
     img.src = svgData;
+  });
+}
+
+// Add autocomplete functionality to the question input
+async function setupShortcutAutocomplete() {
+  await loadCustomPrompts();
+  
+  const questionInput = document.getElementById('question');
+  const autocompleteList = document.createElement('div');
+  autocompleteList.className = 'shortcut-autocomplete';
+  autocompleteList.style.display = 'none';
+  questionInput.parentNode.appendChild(autocompleteList);
+
+  let selectedIndex = -1;
+  let matches = [];
+
+  function selectPrompt(command) {
+    if (!command) return;
+    
+    // Just use the command directly from matches array
+    const currentValue = questionInput.value;
+    const lastSlashIndex = currentValue.lastIndexOf('/');
+    const beforeSlash = lastSlashIndex >= 0 ? currentValue.substring(0, lastSlashIndex) : currentValue;
+    const newValue = beforeSlash + command + ' ';
+    
+    questionInput.value = newValue;
+    questionInput.setSelectionRange(newValue.length, newValue.length);
+    autocompleteList.style.display = 'none';
+    questionInput.focus();
+  }
+
+  function updateSelection() {
+    const items = autocompleteList.querySelectorAll('.autocomplete-item');
+    items.forEach((item, index) => {
+      if (index === selectedIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  // Input handler for showing suggestions
+  questionInput.addEventListener('input', (e) => {
+    const input = e.target.value.toLowerCase();
+    selectedIndex = -1;
+    
+    if (input.startsWith('/')) {
+      matches = Object.keys(PROMPT_SHORTCUTS).filter(cmd => 
+        cmd.toLowerCase().startsWith(input)
+      );
+
+      if (matches.length > 0) {
+        autocompleteList.innerHTML = matches
+          .map((cmd, index) => `
+            <div class="autocomplete-item" data-index="${index}" data-command="${cmd}">
+              <span class="command">${cmd}</span>
+              <span class="shortcut">${index < 9 ? `Alt+${index + 1}` : ''}</span>
+            </div>
+          `)
+          .join('');
+        autocompleteList.style.display = 'block';
+      } else {
+        autocompleteList.style.display = 'none';
+      }
+    } else {
+      autocompleteList.style.display = 'none';
+    }
+  });
+
+  // Keyboard navigation handler
+  questionInput.addEventListener('keydown', (e) => {
+    const isAutocompleteVisible = autocompleteList.style.display === 'block';
+    
+    if (!isAutocompleteVisible) return;
+
+    const items = autocompleteList.querySelectorAll('.autocomplete-item');
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        updateSelection();
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        updateSelection();
+        break;
+        
+      case 'Tab':
+        e.preventDefault();
+        if (matches.length > 0) {
+          const selectedCommand = matches[selectedIndex >= 0 ? selectedIndex : 0];
+          selectPrompt(selectedCommand);
+        }
+        break;
+        
+      case 'Enter':
+        if (selectedIndex >= 0 && selectedIndex < items.length) {
+          e.preventDefault();
+          selectPrompt(matches[selectedIndex]);
+        }
+        break;
+        
+      case 'Escape':
+        e.preventDefault();
+        autocompleteList.style.display = 'none';
+        break;
+    }
+  });
+
+  // Alt+number shortcuts handler
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !isNaN(e.key)) {
+      const index = parseInt(e.key) - 1;
+      if (index >= 0 && index < matches.length && autocompleteList.style.display === 'block') {
+        e.preventDefault();
+        e.stopPropagation();
+        selectPrompt(matches[index]);
+        return false;
+      }
+    }
+  }, true);
+
+  // Click handler for suggestions
+  autocompleteList.addEventListener('click', (e) => {
+    const item = e.target.closest('.autocomplete-item');
+    if (item) {
+      const command = item.querySelector('.command').textContent;
+      selectPrompt(command);
+    }
+  });
+
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.input-section')) {
+      autocompleteList.style.display = 'none';
+    }
   });
 }
 

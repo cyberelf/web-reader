@@ -7,7 +7,8 @@
     "storage",
     "scripting",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -30,5 +31,15 @@
   ],
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["settings.css"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["histories/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

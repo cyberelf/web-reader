@@ -1041,3 +1041,159 @@
   background: var(--dark-bg);
   color: var(--dark-text);
 }
+
+.shortcut-autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.autocomplete-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #1e293b;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background-color: #f8fafc;
+}
+
+.autocomplete-item .command {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.autocomplete-item .shortcut {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Dark theme support */
+.theme-dark .shortcut-autocomplete {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .autocomplete-item {
+  color: #e2e8f0;
+  border-bottom-color: #334155;
+}
+
+.theme-dark .autocomplete-item:hover,
+.theme-dark .autocomplete-item.selected {
+  background-color: #334155;
+}
+
+.theme-dark .autocomplete-item .command {
+  color: #e2e8f0;
+}
+
+.theme-dark .autocomplete-item .shortcut {
+  color: #94a3b8;
+}
+
+.input-section {
+  position: relative;
+}
+
+/* Update button styles */
+.ai-button-base {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Update prompt action buttons */
+.ai-prompt-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  height: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Update save button */
+.ai-save-button {
+  width: 100%;
+  margin-top: 12px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Update add prompt button */
+.ai-add-prompt {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+/* Primary button style */
+.ai-primary-button {
+  background-color: #2962ff;
+  color: white;
+  border: none;
+}
+
+.ai-primary-button:hover {
+  background-color: #1e4bd8;
+}
+
+/* Danger button style */
+.ai-danger-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+}
+
+.ai-danger-button:hover {
+  background-color: #dc2626;
+}

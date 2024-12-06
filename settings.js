@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2000);
     });
   });
+
+  setupCustomPrompts();
 });
 
 function updateTokenDisplay(usage) {
@@ -51,4 +53,82 @@ function updateTokenDisplay(usage) {
     ? Math.round(usage.totalTokens / usage.requestCount) 
     : 0;
   document.getElementById('avg-tokens').textContent = avg.toLocaleString();
+}
+
+function setupCustomPrompts() {
+  const addPromptButton = document.getElementById('add-prompt');
+  const promptsList = document.querySelector('.custom-prompts-list');
+  
+  // Create a template element for new prompts
+  function createPromptItem(command = '', text = '') {
+    const promptItem = document.createElement('div');
+    promptItem.className = 'custom-prompt-item';
+    promptItem.innerHTML = `
+      <div class="prompt-inputs">
+        <input type="text" class="prompt-command" placeholder="/command" value="${command}">
+        <input type="text" class="prompt-text" placeholder="Prompt text" value="${text}">
+      </div>
+      <div class="prompt-actions">
+        <button class="save-prompt ai-button-base ai-primary-button">Save</button>
+        <button class="delete-prompt ai-button-base ai-danger-button">Delete</button>
+      </div>
+    `;
+
+    // Add event listeners to the new buttons
+    const saveButton = promptItem.querySelector('.save-prompt');
+    const deleteButton = promptItem.querySelector('.delete-prompt');
+    const commandInput = promptItem.querySelector('.prompt-command');
+    const textInput = promptItem.querySelector('.prompt-text');
+
+    saveButton.addEventListener('click', () => {
+      const newCommand = commandInput.value.trim();
+      const newText = textInput.value.trim();
+
+      if (!newCommand.startsWith('/')) {
+        alert('Command must start with /');
+        return;
+      }
+
+      if (!newCommand || !newText) {
+        alert('Both command and prompt text are required');
+        return;
+      }
+
+      chrome.storage.sync.get(['customPrompts'], function(result) {
+        const customPrompts = result.customPrompts || {};
+        customPrompts[newCommand] = newText;
+        chrome.storage.sync.set({ customPrompts }, () => {
+          alert('Custom prompt saved!');
+        });
+      });
+    });
+
+    deleteButton.addEventListener('click', () => {
+      const command = commandInput.value.trim();
+      chrome.storage.sync.get(['customPrompts'], function(result) {
+        const customPrompts = result.customPrompts || {};
+        delete customPrompts[command];
+        chrome.storage.sync.set({ customPrompts }, () => {
+          promptItem.remove();
+        });
+      });
+    });
+
+    return promptItem;
+  }
+
+  // Load existing custom prompts
+  chrome.storage.sync.get(['customPrompts'], function(result) {
+    const customPrompts = result.customPrompts || {};
+    Object.entries(customPrompts).forEach(([command, text]) => {
+      const promptItem = createPromptItem(command, text);
+      promptsList.appendChild(promptItem);
+    });
+  });
+
+  // Add new prompt handler
+  addPromptButton.addEventListener('click', () => {
+    const promptItem = createPromptItem();
+    promptsList.appendChild(promptItem);
+  });
 }
