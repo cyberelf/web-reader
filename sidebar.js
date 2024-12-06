@@ -47,10 +47,13 @@ function createSidebar() {
       </div>
       <div class="context-controls">
         <div class="context-header">
-          <select id="context-mode" class="context-mode-selector">
-            <option value="page">Full Page</option>
-            <option value="screenshot">Screenshot/Image</option>
-          </select>
+          <div class="context-mode-wrapper">
+            <div class="slider-container">
+              <div class="slider-option" data-mode="page">Full Page</div>
+              <div class="slider-option" data-mode="screenshot">Screenshot</div>
+              <div class="slider-highlight"></div>
+            </div>
+          </div>
           <button id="screenshot-btn" class="hidden">Take Screenshot</button>
         </div>
         <div id="context-area">
@@ -335,9 +338,11 @@ function setupEventListeners() {
   loadChatHistory();
 }
 
-// Get the page content
+// Update the getPageContent function
 function getPageContent() {
-  const mode = document.getElementById('context-mode').value;
+  // Get mode from active slider option instead of dropdown
+  const activeOption = document.querySelector('.slider-option.active');
+  const mode = activeOption ? activeOption.dataset.mode : 'page';
   let content = '';
 
   switch (mode) {
@@ -379,7 +384,8 @@ function updateContentPreview() {
 async function handleQuestion() {
   const questionInput = document.getElementById('question');
   let question = questionInput.value.trim();
-  const mode = document.getElementById('context-mode').value;
+  const activeOption = document.querySelector('.slider-option.active');
+  const mode = activeOption ? activeOption.dataset.mode : 'page';
   
   // Check if it's just a slash or if autocomplete is visible
   const autocompleteList = document.querySelector('.shortcut-autocomplete');
@@ -614,27 +620,52 @@ function applyTheme(theme) {
 
 // Add new functions for handling different modes
 function setupContextModeHandlers() {
-  const contextMode = document.getElementById('context-mode');
+  const sliderContainer = document.querySelector('.slider-container');
+  const sliderHighlight = document.querySelector('.slider-highlight');
+  const sliderOptions = document.querySelectorAll('.slider-option');
   const dropZone = document.getElementById('drop-zone');
   const contentPreview = document.getElementById('content-preview');
-  const fileInput = document.getElementById('file-input');
   const screenshotBtn = document.getElementById('screenshot-btn');
-  const sidebar = document.getElementById('page-reader-sidebar');
 
-  contextMode.addEventListener('change', (e) => {
-    const mode = e.target.value;
-    // Show/hide content preview based on mode
-    contentPreview.style.display = mode === 'page' ? 'block' : 'none';
-    // Show/hide drop zone based on mode
-    dropZone.style.display = mode === 'page' ? 'none' : 'block';
-    // Show/hide screenshot button
-    screenshotBtn.className = mode === 'screenshot' ? 'visible' : '';
+  // Initialize the slider position
+  const initializeSlider = () => {
+    const activeOption = document.querySelector('.slider-option.active') || sliderOptions[0];
+    const optionRect = activeOption.getBoundingClientRect();
+    const containerRect = sliderContainer.getBoundingClientRect();
     
-    // Reset drop zone content
-    if (mode === 'screenshot') {
-      dropZone.innerHTML = '<p>Take a screenshot or drag and drop an image here</p>';
-      dropZone.removeAttribute('data-content');
-    }
+    sliderHighlight.style.width = `${optionRect.width}px`;
+    sliderHighlight.style.transform = `translateX(${activeOption.offsetLeft}px)`;
+  };
+
+  // Set initial active state
+  sliderOptions[0].classList.add('active');
+  initializeSlider();
+
+  // Handle option clicks
+  sliderOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const mode = option.dataset.mode;
+      
+      // Update active state
+      sliderOptions.forEach(opt => opt.classList.remove('active'));
+      option.classList.add('active');
+      
+      // Move highlight
+      sliderHighlight.style.width = `${option.offsetWidth}px`;
+      sliderHighlight.style.transform = `translateX(${option.offsetLeft}px)`;
+
+      // Update UI based on mode
+      if (mode === 'screenshot') {
+        contentPreview.style.display = 'none';
+        dropZone.style.display = 'block';
+        screenshotBtn.classList.add('visible');
+      } else {
+        contentPreview.style.display = 'block';
+        dropZone.style.display = 'none';
+        screenshotBtn.classList.remove('visible');
+        updateContentPreview();
+      }
+    });
   });
 
   // Drag and drop handlers
@@ -760,8 +791,9 @@ function setupContextModeHandlers() {
   // Add screenshot handler
   screenshotBtn.addEventListener('click', async () => {
     try {
+      const sidebar = document.getElementById('page-reader-sidebar');
       sidebar.classList.remove('open');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 300)); // Wait for sidebar animation
       
       const screenshot = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ action: 'takeScreenshot' }, (response) => {
@@ -795,6 +827,9 @@ function setupContextModeHandlers() {
     } catch (error) {
       console.error('Screenshot failed:', error);
       dropZone.innerHTML = '<p>Failed to take screenshot. Please try again.</p>';
+      
+      // Make sure sidebar is open even if screenshot fails
+      const sidebar = document.getElementById('page-reader-sidebar');
       sidebar.classList.add('open');
     }
   });

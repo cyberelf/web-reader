@@ -1197,3 +1197,57 @@
 .ai-danger-button:hover {
   background-color: #dc2626;
 }
+
+/* Context mode slider styles */
+.context-mode-wrapper {
+  flex: 1;
+}
+
+.slider-container {
+  position: relative;
+  display: flex;
+  background: var(--hover);
+  border-radius: 8px;
+  padding: 4px;
+  width: fit-content;
+  gap: 4px;
+}
+
+.slider-option {
+  position: relative;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  z-index: 1;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+  border-radius: 6px;
+}
+
+.slider-option.active {
+  color: #fff;
+}
+
+.slider-highlight {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: calc(100% - 8px);
+  background: var(--button-bg);
+  border-radius: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark theme adjustments */
+.theme-dark .slider-container {
+  background: var(--dark-hover);
+}
+
+.theme-dark .slider-option {
+  color: var(--dark-text);
+}
+
+.theme-dark .slider-option.active {
+  color: #fff;
+}
