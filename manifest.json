@@ -26,7 +26,8 @@
     {
       "matches": ["<all_urls>"],
       "css": ["sidebar.css"],
-      "js": ["lib/marked.min.js", "image-handler.js", "sidebar.js"]
+      "js": ["lib/marked.min.js","src/main.js"],
+      "type": "module"
     }
   ],
   "background": {
@@ -34,7 +35,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["settings.css"],
+      "resources": [
+        "settings.css",
+        "src/*.js",
+        "src/*/*.js",
+        "src/*/*/*.js"
+      ],
       "matches": ["<all_urls>"]
     },
     {
