@@ -13,12 +13,64 @@ function createStreamingMessage(model) {
     const messageFooter = document.createElement('div');
     messageFooter.className = 'ai-message-footer';
     
-    messageFooter.innerHTML = `
-        <div class="ai-message-time">${new Date().toLocaleTimeString()}</div>
-        <div class="ai-model-info">${model}</div>
+    // Create model info/selector with refresh icon
+    const modelInfo = document.createElement('div');
+    modelInfo.className = 'model-info-container';
+    
+    // Create refresh icon
+    const refreshIcon = document.createElement('span');
+    refreshIcon.className = 'refresh-icon';
+    refreshIcon.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M4.5 2.5C5.05228 2.5 5.5 2.94772 5.5 3.5V4.07196C7.19872 2.79481 9.43483 2 11.9091 2C16.3871 2 20 5.61294 20 10.0909C20 14.5689 16.3871 18.1818 11.9091 18.1818C8.11737 18.1818 4.96036 15.5665 4.21462 12.0491C4.09625 11.5127 4.4074 10.9905 4.94371 10.8721C5.48002 10.7537 6.00229 11.0649 6.12066 11.6013C6.69697 14.2831 9.06864 16.2727 11.9091 16.2727C15.3321 16.2727 18.0909 13.5139 18.0909 10.0909C18.0909 6.66797 15.3321 3.90909 11.9091 3.90909C9.92876 3.90909 8.16865 4.75821 6.96624 6.13641L8.5 6.13641C9.05228 6.13641 9.5 6.58412 9.5 7.13641C9.5 7.68869 9.05228 8.13641 8.5 8.13641H4.5C3.94772 8.13641 3.5 7.68869 3.5 7.13641V3.5C3.5 2.94772 3.94772 2.5 4.5 2.5Z"/>
+        </svg>
     `;
     
+    // Create model selector
+    const modelSelect = document.createElement('select');
+    modelSelect.className = 'message-model-selector';
+    modelSelect.innerHTML = `
+        <option value="gpt-4o-mini" ${model === 'gpt-4o-mini' ? 'selected' : ''}>GPT-4o-mini</option>
+        <option value="gpt-4o" ${model === 'gpt-4o' ? 'selected' : ''}>GPT-4o</option>
+        <option value="gpt-o1-mini" ${model === 'gpt-o1-mini' ? 'selected' : ''}>GPT-o1 mini</option>
+    `;
+    
+    // Add refresh icon and model selector to container
+    modelInfo.appendChild(refreshIcon);
+    modelInfo.appendChild(modelSelect);
+    
+    modelSelect.addEventListener('change', async () => {
+        const newModel = modelSelect.value;
+        const userMessage = messageDiv.previousElementSibling;
+        if (userMessage && userMessage.classList.contains('ai-user-message')) {
+            const question = userMessage.querySelector('.ai-message-content').textContent;
+            messageDiv.remove();
+            userMessage.remove();
+            await handleQuestion(question, newModel);
+        }
+    });
+    messageFooter.appendChild(modelInfo);
+    
+    messageFooter.innerHTML = `
+        <div class="ai-message-time">${new Date().toLocaleTimeString()}</div>
+    `;
+    messageFooter.appendChild(modelInfo);
+    
     messageDiv.append(messageContent, messageFooter);
+    
+    // Convert previous message's dropdown to static text
+    const answerDiv = document.getElementById('answer');
+    const previousMessages = answerDiv.querySelectorAll('.ai-assistant-message');
+    previousMessages.forEach(msg => {
+        const oldSelect = msg.querySelector('.message-model-selector');
+        if (oldSelect) {
+            const modelText = document.createElement('div');
+            modelText.className = 'ai-model-info';
+            modelText.textContent = oldSelect.value;
+            oldSelect.parentNode.replaceChild(modelText, oldSelect);
+        }
+    });
+    
     return { messageDiv, messageContent };
 }
 
@@ -27,9 +79,9 @@ async function getCurrentModel() {
     return selectedModel || 'gpt-4o-mini'; // default model
 }
 
-async function handleQuestion() {
+async function handleQuestion(forcedQuestion = null, forcedModel = null) {
     const questionInput = document.getElementById('question');
-    let question = questionInput.value.trim();
+    let question = forcedQuestion || questionInput.value.trim();
     
     // Check if it's just a slash or if autocomplete is visible
     const autocompleteList = document.querySelector('.shortcut-autocomplete');
@@ -59,9 +111,8 @@ async function handleQuestion() {
     
     try {
         const content = getPageContent();
-        // Get current model from selector instead of storage
-        const modelSelector = document.getElementById('model-selector');
-        const model = modelSelector.value; // Use the current selected value
+        // Use forced model or get from selector
+        const model = forcedModel || document.getElementById('model-selector').value;
         
         // Create streaming message container with model info
         const { messageDiv, messageContent } = createStreamingMessage(model);
@@ -154,23 +205,42 @@ async function handleQuestion() {
 
         // Save to chat history
         const currentUrl = window.location.href;
-        const newMessages = [
-            {
-                r: 'user',
-                c: question,
-                t: Date.now()
-            },
-            {
-                r: 'assistant',
-                c: fullResponse,
-                t: Date.now()
-            }
-        ];
+        const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
+        const key = `chat_history_${urlHash}`;
 
-        await saveChatHistory(currentUrl, newMessages);
+        try {
+            // Get existing history
+            const result = await chrome.storage.local.get([key]);
+            const currentHistory = result[key] || [];
+            
+            // Add new messages
+            const newMessages = [
+                {
+                    r: 'user',
+                    c: question,
+                    t: Date.now()
+                },
+                {
+                    r: 'assistant',
+                    c: fullResponse,
+                    t: Date.now(),
+                    m: model // Save the model used
+                }
+            ];
 
-        // Clear the input
-        questionInput.value = '';
+            // Keep only the last 50 messages
+            const updatedHistory = [...currentHistory, ...newMessages].slice(-50);
+
+            // Save updated history
+            await chrome.storage.local.set({ [key]: updatedHistory });
+        } catch (error) {
+            console.error('Failed to save chat history:', error);
+        }
+
+        // Only clear input if it's not a forced question
+        if (!forcedQuestion) {
+            questionInput.value = '';
+        }
 
         // Save model selection after successful request
         await chrome.storage.sync.set({ selectedModel: model });
