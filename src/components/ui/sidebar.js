@@ -5,10 +5,18 @@ import { loadChatHistory } from '../chat/chatHistory.js';
 import { handleQuestion } from '../chat/messageHandler.js';
 import { setupShortcutAutocomplete } from './autocomplete.js';
 import { applyTheme } from './theme.js';
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL } from '../../config.js';
 
 function createSidebar() {
     const sidebar = document.createElement('div');
     sidebar.id = 'page-reader-sidebar';
+    const modelSelectorHtml = Object.entries(MODELS)
+        .filter(([key]) => key !== 'VISION')
+        .map(([_, value]) => `
+            <option value="${value}">${MODEL_DISPLAY_NAMES[value]}</option>
+        `)
+        .join('');
+    
     sidebar.innerHTML = `
         <div class="sidebar-container">
             <div class="sidebar-header">
@@ -59,9 +67,7 @@ function createSidebar() {
                 <div class="bottom-controls">
                     <button id="ask-button">Ask Question</button>
                     <select id="model-selector" class="model-selector">
-                        <option value="gpt-4o-mini">GPT-4o-mini</option>
-                        <option value="gpt-4o">GPT-4o</option>
-                        <option value="gpt-o1-mini">GPT-o1 mini</option>
+                        ${modelSelectorHtml}
                     </select>
                 </div>
             </div>

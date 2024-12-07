@@ -15,11 +15,9 @@
     <input type="text" id="openai-url" spellcheck="false" placeholder="https://api.openai.com/v1/">
   </div>
   <div class="input-group">
-    <label for="model">AI Model</label>
+    <label for="model">Default Model</label>
     <select id="model">
-      <option value="gpt-4o-mini" selected>GPT-4o-mini</option>
-      <option value="gpt-4o">GPT-4o</option>
-      <option value="gpt-o1-mini">GPT-o1-mini</option>
+      <!-- Model options will be populated by JavaScript -->
     </select>
   </div>
   <div class="settings-section">
@@ -35,6 +33,6 @@
     <p>Requests made: <span id="request-count">0</span></p>
     <p>Average tokens/request: <span id="avg-tokens">0</span></p>
   </div>
-  <script src="settings.js"></script>
+  <script type="module" src="settings.js"></script>
 </body>
 </html>

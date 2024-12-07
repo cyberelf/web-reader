@@ -2,6 +2,7 @@ import { saveChatHistory, addMessageToChat } from './chatHistory.js';
 import { parseMarkdown } from '../../utils/markdown.js';
 import { handleShortcut } from './promptShortcuts.js';
 import { getPageContent } from '../context/contextModes.js';
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL } from '../../config.js';
 
 function createStreamingMessage(model) {
     const messageDiv = document.createElement('div');
@@ -26,14 +27,17 @@ function createStreamingMessage(model) {
         </svg>
     `;
     
-    // Create model selector
+    // Create model selector with config values
     const modelSelect = document.createElement('select');
     modelSelect.className = 'message-model-selector';
-    modelSelect.innerHTML = `
-        <option value="gpt-4o-mini" ${model === 'gpt-4o-mini' ? 'selected' : ''}>GPT-4o-mini</option>
-        <option value="gpt-4o" ${model === 'gpt-4o' ? 'selected' : ''}>GPT-4o</option>
-        <option value="gpt-o1-mini" ${model === 'gpt-o1-mini' ? 'selected' : ''}>GPT-o1 mini</option>
-    `;
+    modelSelect.innerHTML = Object.entries(MODELS)
+        .filter(([key]) => key !== 'VISION') // Exclude vision model from dropdown
+        .map(([_, value]) => `
+            <option value="${value}" ${model === value ? 'selected' : ''}>
+                ${MODEL_DISPLAY_NAMES[value]}
+            </option>
+        `)
+        .join('');
     
     // Add refresh icon and model selector to container
     modelInfo.appendChild(refreshIcon);
@@ -76,7 +80,7 @@ function createStreamingMessage(model) {
 
 async function getCurrentModel() {
     const { selectedModel } = await chrome.storage.sync.get(['selectedModel']);
-    return selectedModel || 'gpt-4o-mini'; // default model
+    return selectedModel || DEFAULT_MODEL;
 }
 
 async function handleQuestion(forcedQuestion = null, forcedModel = null) {

@@ -1,4 +1,17 @@
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL } from './src/config.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Populate model selector
+  const modelSelect = document.getElementById('model');
+  Object.entries(MODELS)
+    .filter(([key]) => key !== 'VISION') // Exclude vision model from settings
+    .forEach(([_, value]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = MODEL_DISPLAY_NAMES[value];
+      modelSelect.appendChild(option);
+    });
+
   // Load saved settings
   chrome.storage.sync.get(['openaiApiKey', 'tokenUsage', 'selectedModel', 'openaiUrl'], (result) => {
     if (result.openaiApiKey) {
@@ -8,8 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.selectedModel) {
       document.getElementById('model').value = result.selectedModel;
     } else {
-      // Default to GPT-3.5 Turbo if no model is selected
-      document.getElementById('model').value = 'gpt-3.5-turbo';
+      document.getElementById('model').value = DEFAULT_MODEL;
     }
     
     if (result.tokenUsage) {
@@ -29,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     chrome.storage.sync.set({
       openaiApiKey: apiKey,
-      selectedModel: selectedModel || 'gpt-4o-mini',
+      selectedModel: selectedModel || DEFAULT_MODEL,
       openaiUrl: openaiUrl || 'https://api.openai.com/v1/'
     }, () => {
       // Show success message

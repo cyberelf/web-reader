@@ -37,9 +37,11 @@
     {
       "resources": [
         "settings.css",
+        "settings.js",
         "src/*.js",
         "src/*/*.js",
-        "src/*/*/*.js"
+        "src/*/*/*.js",
+        "src/config.js"
       ],
       "matches": ["<all_urls>"]
     },
