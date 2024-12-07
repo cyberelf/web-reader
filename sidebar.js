@@ -7,9 +7,29 @@ let PROMPT_SHORTCUTS = {
   '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
 };
 
+// Add storage change listener at the top level of sidebar.js
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.customPrompts) {
+    // Update the PROMPT_SHORTCUTS with new custom prompts
+    const customPrompts = changes.customPrompts.newValue || {};
+    PROMPT_SHORTCUTS = {
+      '/summarize': 'Please provide a concise summary of this content, highlighting the main points and key takeaways.',
+      '/explain': 'Please explain this content in simple terms, breaking down any complex concepts and providing clear explanations.',
+      '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
+      ...customPrompts
+    };
+  }
+});
+
 async function loadCustomPrompts() {
   const { customPrompts = {} } = await chrome.storage.sync.get(['customPrompts']);
-  PROMPT_SHORTCUTS = { ...PROMPT_SHORTCUTS, ...customPrompts };
+  PROMPT_SHORTCUTS = {
+    '/summarize': 'Please provide a concise summary of this content, highlighting the main points and key takeaways.',
+    '/explain': 'Please explain this content in simple terms, breaking down any complex concepts and providing clear explanations.',
+    '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
+    ...customPrompts
+  };
+  return PROMPT_SHORTCUTS;
 }
 
 function handleShortcut(input) {
