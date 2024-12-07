@@ -749,9 +749,22 @@ function setupContextModeHandlers() {
   document.addEventListener('selectionchange', () => {
     const activeOption = document.querySelector('.slider-option.active');
     if (activeOption && activeOption.dataset.mode === 'selection') {
-      const selection = window.getSelection().toString().trim();
-      if (selection) {
-        contentPreview.setAttribute('data-selection', selection);
+      const selection = window.getSelection();
+      const sidebar = document.getElementById('page-reader-sidebar');
+      
+      // Check if the selection is within the sidebar
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        if (sidebar.contains(container)) {
+          return; // Ignore selections within the sidebar
+        }
+      }
+      
+      const selectedText = selection.toString().trim();
+      if (selectedText) {
+        const contentPreview = document.getElementById('content-preview');
+        contentPreview.setAttribute('data-selection', selectedText);
         updateContentPreview();
       }
     }
