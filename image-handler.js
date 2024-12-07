@@ -10,11 +10,12 @@ function handlePaste(event) {
             reader.onload = function(e) {
                 const base64Image = e.target.result;
                 
-                // If we're in screenshot mode, update the drop zone
-                const contextMode = document.getElementById('context-mode');
+                // Check if we're in screenshot mode using the slider
+                const activeOption = document.querySelector('.slider-option.active');
+                const mode = activeOption ? activeOption.dataset.mode : 'page';
                 const dropZone = document.getElementById('drop-zone');
                 
-                if (contextMode.value === 'screenshot' && dropZone) {
+                if (mode === 'screenshot' && dropZone) {
                     dropZone.setAttribute('data-content', base64Image);
                     dropZone.innerHTML = `
                         <div class="image-preview">
