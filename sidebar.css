@@ -385,26 +385,42 @@
 }
 
 #screenshot-btn {
-  padding: 8px 12px;
+  padding: 8px;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
 }
 
 #screenshot-btn.visible {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 #screenshot-btn:hover {
   border-color: var(--button-bg);
   background-color: var(--hover);
+}
+
+#screenshot-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.theme-dark #screenshot-btn {
+  color: var(--dark-text);
+  border-color: var(--dark-border);
+}
+
+.theme-dark #screenshot-btn:hover {
+  border-color: var(--dark-button-bg);
+  background-color: var(--dark-hover);
 }
 
 .screenshot-container {
