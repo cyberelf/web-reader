@@ -50,6 +50,7 @@ function createSidebar() {
           <div class="context-mode-wrapper">
             <div class="slider-container">
               <div class="slider-option" data-mode="page">Full Page</div>
+              <div class="slider-option" data-mode="selection">Selection</div>
               <div class="slider-option" data-mode="screenshot">Screenshot</div>
               <div class="slider-highlight"></div>
             </div>
@@ -59,7 +60,7 @@ function createSidebar() {
         <div id="context-area">
           <div id="content-preview"></div>
           <div id="drop-zone" class="hidden">
-            <p>Drag and drop an image here</p>
+            <p>Take a screenshot or drag and drop an image here</p>
             <input type="file" id="file-input" accept="image/*" hidden>
           </div>
         </div>
@@ -131,6 +132,13 @@ async function saveChatHistory(currentUrl, history) {
 // Function to load chat history
 async function loadChatHistory() {
   try {
+    // Check if extension context is valid
+    if (!chrome.runtime?.id) {
+      console.log('Extension context invalidated, reloading page...');
+      window.location.reload();
+      return;
+    }
+
     const currentUrl = window.location.href;
     const urlHash = btoa(currentUrl).replace(/[/+=]/g, '_');
     const key = `chat_history_${urlHash}`;
@@ -145,27 +153,40 @@ async function loadChatHistory() {
       answerDiv.appendChild(clearButton);
     }
 
-    // Load chat history from storage
-    const result = await chrome.storage.local.get([key]);
-    const chatHistory = result[key] || [];
-    
-    // Add each message to the chat
-    chatHistory.forEach(message => {
-      if (message) {
-        const role = message.r || message.role;
-        const content = message.c || message.content;
-        const timestamp = message.t || message.timestamp;
-        
-        if (role && content) {
-          addMessageToChat(role, content, timestamp);
+    try {
+      // Load chat history from storage with timeout
+      const result = await Promise.race([
+        chrome.storage.local.get([key]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Storage timeout')), 5000)
+        )
+      ]);
+      
+      const chatHistory = result[key] || [];
+      
+      // Add each message to the chat
+      chatHistory.forEach(message => {
+        if (message) {
+          const role = message.r || message.role;
+          const content = message.c || message.content;
+          const timestamp = message.t || message.timestamp;
+          
+          if (role && content) {
+            addMessageToChat(role, content, timestamp);
+          }
         }
-      }
-    });
+      });
 
-    // Scroll to bottom
-    answerDiv.scrollTop = answerDiv.scrollHeight;
+      // Scroll to bottom
+      answerDiv.scrollTop = answerDiv.scrollHeight;
+    } catch (storageError) {
+      console.error('Storage error:', storageError);
+      // If storage fails, try to recover by clearing history
+      await chrome.storage.local.remove(key);
+    }
   } catch (error) {
     console.error('Error loading chat history:', error);
+    // If extension context is invalid, the page will reload
   }
 }
 
@@ -336,30 +357,45 @@ function setupEventListeners() {
 
   // Also load chat history when the page loads
   loadChatHistory();
+
+  // Add extension context check
+  const checkExtensionContext = setInterval(() => {
+    if (!chrome.runtime?.id) {
+      console.log('Extension context invalidated, reloading page...');
+      clearInterval(checkExtensionContext);
+      window.location.reload();
+    }
+  }, 1000);
+
+  // Clean up interval when page unloads
+  window.addEventListener('unload', () => {
+    clearInterval(checkExtensionContext);
+  });
 }
 
 // Update the getPageContent function
 function getPageContent() {
-  // Get mode from active slider option instead of dropdown
   const activeOption = document.querySelector('.slider-option.active');
   const mode = activeOption ? activeOption.dataset.mode : 'page';
   let content = '';
 
   switch (mode) {
     case 'page':
-      // Create a clone of the body to avoid modifying the original
       const bodyClone = document.body.cloneNode(true);
-      // Remove scripts and styles from the clone
       const scripts = bodyClone.getElementsByTagName('script');
       const styles = bodyClone.getElementsByTagName('style');
       while (scripts.length > 0) scripts[0].remove();
       while (styles.length > 0) styles[0].remove();
       content = bodyClone.innerText;
       break;
-    case 'screenshot':
-      content = document.getElementById('drop-zone').getAttribute('data-content') || '';
-      break;
     case 'selection':
+      const selection = window.getSelection();
+      content = selection.toString().trim();
+      if (!content) {
+        content = document.getElementById('content-preview').getAttribute('data-selection') || '';
+      }
+      break;
+    case 'screenshot':
       content = document.getElementById('drop-zone').getAttribute('data-content') || '';
       break;
   }
@@ -376,7 +412,12 @@ function updateContentPreview() {
       ? `${content.substring(0, 200)}...` 
       : content;
   } else {
-    preview.textContent = 'No content available';
+    const activeOption = document.querySelector('.slider-option.active');
+    if (activeOption && activeOption.dataset.mode === 'selection') {
+      preview.textContent = 'No text selected. Please select some text on the page.';
+    } else {
+      preview.textContent = 'No content available';
+    }
   }
 }
 
@@ -665,7 +706,30 @@ function setupContextModeHandlers() {
         screenshotBtn.classList.remove('visible');
         updateContentPreview();
       }
+
+      // Handle selection mode
+      if (mode === 'selection') {
+        const selection = window.getSelection().toString().trim();
+        if (selection) {
+          contentPreview.setAttribute('data-selection', selection);
+          updateContentPreview();
+        } else {
+          contentPreview.textContent = 'No text selected. Please select some text on the page.';
+        }
+      }
     });
+  });
+
+  // Add selection change listener
+  document.addEventListener('selectionchange', () => {
+    const activeOption = document.querySelector('.slider-option.active');
+    if (activeOption && activeOption.dataset.mode === 'selection') {
+      const selection = window.getSelection().toString().trim();
+      if (selection) {
+        contentPreview.setAttribute('data-selection', selection);
+        updateContentPreview();
+      }
+    }
   });
 
   // Drag and drop handlers
