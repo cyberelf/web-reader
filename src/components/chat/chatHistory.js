@@ -55,6 +55,33 @@ function addMessageToChat(role, content, timestamp = Date.now()) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `ai-chat-message ai-${role}-message`;
     
+    // Add copy button for assistant messages
+    if (role === 'assistant') {
+        const copyContainer = document.createElement('div');
+        copyContainer.className = 'copy-container';
+        copyContainer.innerHTML = `
+            <button class="copy-button" aria-label="Copy response">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        `;
+        messageDiv.appendChild(copyContainer);
+
+        // Add copy functionality
+        const copyButton = copyContainer.querySelector('.copy-button');
+        copyButton.addEventListener('click', () => {
+            const textToCopy = messageDiv.querySelector('.ai-message-content').textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyButton.classList.add('copied');
+                setTimeout(() => {
+                    copyButton.classList.remove('copied');
+                }, 2000);
+            });
+        });
+    }
+    
     const messageContent = document.createElement('div');
     messageContent.className = 'ai-message-content';
     const sanitizedContent = content
