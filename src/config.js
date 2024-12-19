@@ -9,3 +9,8 @@ export const MODEL_DISPLAY_NAMES = {
 };
 
 export const DEFAULT_MODEL = MODELS.GPT4_MINI;
+
+export const DEFAULT_ICON_POSITION = {
+    top: '20px',
+    right: '20px'
+};

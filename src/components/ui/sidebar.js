@@ -5,7 +5,126 @@ import { loadChatHistory } from '../chat/chatHistory.js';
 import { handleQuestion } from '../chat/messageHandler.js';
 import { setupShortcutAutocomplete } from './autocomplete.js';
 import { applyTheme } from './theme.js';
-import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL } from '../../config.js';
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, DEFAULT_ICON_POSITION } from '../../config.js';
+
+function setupToggleButton(toggleButton) {
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let pressTimer;
+    let hasStartedDrag = false;
+    let pressStartTime;
+
+    // Reset to default position on every page load
+    toggleButton.style.top = DEFAULT_ICON_POSITION.top;
+    toggleButton.style.right = DEFAULT_ICON_POSITION.right;
+    toggleButton.style.left = 'auto';
+    currentX = window.innerWidth - toggleButton.offsetWidth - 20;
+    currentY = 20;
+
+    // Check visibility setting only
+    chrome.storage.sync.get(['showIcon'], (result) => {
+        toggleButton.style.display = result.showIcon === false ? 'none' : 'block';
+    });
+
+    function onDragStart(e) {
+        pressStartTime = Date.now();
+        // Start press timer
+        pressTimer = setTimeout(() => {
+            if (e.target === toggleButton) {
+                isDragging = true;
+                hasStartedDrag = true;
+                toggleButton.classList.add('dragging');
+                
+                const rect = toggleButton.getBoundingClientRect();
+                currentX = rect.left;
+                currentY = rect.top;
+                initialX = e.clientX - currentX;
+                initialY = e.clientY - currentY;
+
+                toggleButton.style.right = 'auto';
+                toggleButton.style.left = currentX + 'px';
+                toggleButton.style.top = currentY + 'px';
+            }
+        }, 200);
+
+        e.preventDefault();
+    }
+
+    function onDragEnd(e) {
+        clearTimeout(pressTimer);
+        const pressDuration = Date.now() - pressStartTime;
+        
+        if (!isDragging && pressDuration < 200) {
+            // Handle as click if press was short and no drag occurred
+            const sidebar = document.getElementById('page-reader-sidebar');
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            } else {
+                sidebar.classList.add('open');
+                loadChatHistory();
+                updateContentPreview();
+            }
+        } else if (isDragging) {
+            isDragging = false;
+            hasStartedDrag = false;
+            toggleButton.classList.remove('dragging');
+            
+            const rect = toggleButton.getBoundingClientRect();
+            toggleButton.style.left = 'auto';
+            toggleButton.style.right = (window.innerWidth - rect.right) + 'px';
+            toggleButton.style.top = rect.top + 'px';
+        }
+    }
+
+    function onDragMove(e) {
+        if (!isDragging) return;
+
+        e.preventDefault();
+        
+        // Calculate new position with smooth movement
+        const dx = e.clientX - initialX;
+        const dy = e.clientY - initialY;
+        
+        // Apply easing to make movement smoother
+        currentX += (dx - currentX) * 0.2;
+        currentY += (dy - currentY) * 0.2;
+
+        // Keep button within viewport
+        const buttonRect = toggleButton.getBoundingClientRect();
+        const maxX = window.innerWidth - buttonRect.width;
+        const maxY = window.innerHeight - buttonRect.height;
+        
+        currentX = Math.min(Math.max(0, currentX), maxX);
+        currentY = Math.min(Math.max(0, currentY), maxY);
+
+        // Update position using top/left instead of transform
+        toggleButton.style.left = currentX + 'px';
+        toggleButton.style.top = currentY + 'px';
+    }
+
+    // Add touch support
+    toggleButton.addEventListener('touchstart', onDragStart, { passive: false });
+    toggleButton.addEventListener('touchend', onDragEnd);
+    toggleButton.addEventListener('touchmove', onDragMove, { passive: false });
+
+    // Add mouse support
+    toggleButton.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+
+    // Cancel drag on mouse leave
+    document.addEventListener('mouseleave', () => {
+        clearTimeout(pressTimer);
+        if (isDragging) {
+            isDragging = false;
+            hasStartedDrag = false;
+            toggleButton.classList.remove('dragging');
+        }
+    });
+}
 
 function createSidebar() {
     const sidebar = document.createElement('div');
@@ -91,6 +210,8 @@ function createSidebar() {
     document.body.appendChild(sidebar);
     document.body.appendChild(toggleButton);
 
+    setupToggleButton(toggleButton);
+
     configureMarked();
     setupEventListeners();
     loadChatHistory();
@@ -131,21 +252,28 @@ function setupEventListeners() {
         }
     });
 
-    // Toggle sidebar
-    toggleButton.addEventListener('click', async () => {
-        if (!sidebar.classList.contains('open')) {
-            sidebar.classList.add('open');
-            await loadChatHistory();
-            updateContentPreview();
-        }
-    });
-
-    // Close sidebar
+    // Close sidebar when clicking close button
     closeButton.addEventListener('click', () => {
         if (sidebar.classList.contains('open')) {
             sidebar.classList.remove('open');
+            toggleButton.style.display = 'block'; // Show toggle button when sidebar closes
         }
     });
+
+    // Listen for sidebar open/close to manage toggle button visibility
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (sidebar.classList.contains('open')) {
+                    toggleButton.style.display = 'none';
+                } else {
+                    toggleButton.style.display = 'block';
+                }
+            }
+        });
+    });
+
+    observer.observe(sidebar, { attributes: true });
 
     // Ask question
     askButton.addEventListener('click', handleQuestion);

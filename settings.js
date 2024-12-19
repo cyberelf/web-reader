@@ -56,6 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   setupCustomPrompts();
+
+  // Load icon visibility setting
+  chrome.storage.sync.get(['showIcon'], (result) => {
+    document.getElementById('show-icon').checked = result.showIcon !== false;
+  });
+
+  // Handle icon visibility toggle
+  document.getElementById('show-icon').addEventListener('change', (e) => {
+    chrome.storage.sync.set({ showIcon: e.target.checked });
+  });
 });
 
 function updateTokenDisplay(usage) {

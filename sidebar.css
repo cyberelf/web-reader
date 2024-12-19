@@ -471,12 +471,19 @@
   cursor: pointer;
   font-weight: 500;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease;
+  user-select: none;
+  touch-action: none;
 }
 
 #page-reader-toggle:hover {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#page-reader-toggle.dragging {
+  opacity: 0.8;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  cursor: grabbing;
 }
 
 /* Hide Ask AI button when sidebar is open */
