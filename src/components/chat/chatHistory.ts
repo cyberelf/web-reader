@@ -13,10 +13,6 @@ interface ChatHistory {
   url: string;
 }
 
-interface StorageResult {
-  chatHistories?: Record<string, ChatHistory>;
-}
-
 let currentHistory: ChatHistory = {
   messages: [],
   url: window.location.href
@@ -24,26 +20,38 @@ let currentHistory: ChatHistory = {
 
 export async function loadChatHistory(): Promise<void> {
   const answerDiv = document.getElementById('answer');
+  debugger; 
   if (!answerDiv) return;
 
   try {
-    const result = await chrome.storage.local.get(['chatHistories']);
-    const histories: Record<string, ChatHistory> = result.chatHistories || {};
-    currentHistory = histories[window.location.href] || { messages: [], url: window.location.href };
+    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
+      chrome.storage.local.get(['chatHistories'], resolve);
+    });
     
-    // Clear existing messages
+    const histories = result.chatHistories || {};
+    const currentUrl = String(window.location.href);
+    currentHistory = histories[currentUrl] || { messages: [], url: window.location.href };
+    
+    // Clear existing messages except the clear button
     const clearButton = answerDiv.querySelector('.clear-chat');
-    answerDiv.innerHTML = '';
-    if (clearButton) answerDiv.appendChild(clearButton);
+    const messages = answerDiv.querySelectorAll('.message');
+    messages.forEach(message => message.remove());
     
     // Add messages
     currentHistory.messages.forEach(message => {
       const messageDiv = createMessageElement(message);
-      answerDiv.insertBefore(messageDiv, clearButton);
+      if (clearButton) {
+        answerDiv.insertBefore(messageDiv, clearButton);
+      } else {
+        answerDiv.appendChild(messageDiv);
+      }
     });
     
     // Scroll to bottom
     answerDiv.scrollTop = answerDiv.scrollHeight;
+
+    // Return a promise that resolves after DOM updates
+    await new Promise(resolve => setTimeout(resolve, 0));
   } catch (error) {
     console.error('Failed to load chat history:', error);
   }
@@ -59,16 +67,26 @@ export async function addMessage(role: 'user' | 'assistant', content: string): P
   currentHistory.messages.push(message);
   
   try {
-    const result = await chrome.storage.local.get(['chatHistories']);
-    const histories: Record<string, ChatHistory> = result.chatHistories || {};
+    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
+      chrome.storage.local.get(['chatHistories'], resolve);
+    });
+    
+    const histories = result.chatHistories || {};
     histories[window.location.href] = currentHistory;
-    await chrome.storage.local.set({ chatHistories: histories });
+    
+    await new Promise<void>((resolve) => {
+      chrome.storage.local.set({ chatHistories: histories }, resolve);
+    });
     
     const answerDiv = document.getElementById('answer');
     const clearButton = answerDiv?.querySelector('.clear-chat');
-    if (answerDiv && clearButton) {
+    if (answerDiv) {
       const messageDiv = createMessageElement(message);
-      answerDiv.insertBefore(messageDiv, clearButton);
+      if (clearButton) {
+        answerDiv.insertBefore(messageDiv, clearButton);
+      } else {
+        answerDiv.appendChild(messageDiv);
+      }
       answerDiv.scrollTop = answerDiv.scrollHeight;
     }
   } catch (error) {
@@ -78,11 +96,25 @@ export async function addMessage(role: 'user' | 'assistant', content: string): P
 
 export async function clearChatHistory(): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(['chatHistories']);
-    const histories: Record<string, ChatHistory> = result.chatHistories || {};
+    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
+      chrome.storage.local.get(['chatHistories'], resolve);
+    });
+    
+    const histories = result.chatHistories || {};
     delete histories[window.location.href];
-    await chrome.storage.local.set({ chatHistories: histories });
+    
+    await new Promise<void>((resolve) => {
+      chrome.storage.local.set({ chatHistories: histories }, resolve);
+    });
+    
     currentHistory = { messages: [], url: window.location.href };
+    
+    // Clear messages from the UI
+    const answerDiv = document.getElementById('answer');
+    if (answerDiv) {
+      const messages = answerDiv.querySelectorAll('.message');
+      messages.forEach(message => message.remove());
+    }
   } catch (error) {
     console.error('Failed to clear chat history:', error);
   }

@@ -21,8 +21,8 @@ chrome.runtime.onMessage.addListener((
 
   if (request.action === 'fetchImage' && request.url) {
     fetch(request.url)
-      .then(response => response.blob())
-      .then(blob => {
+      .then((response: Response): Promise<Blob> => response.blob())
+      .then((blob: Blob): void => {
         const reader = new FileReader();
         reader.onloadend = () => sendResponse({ data: reader.result as string });
         reader.onerror = () => sendResponse({ error: 'Failed to read image data' });

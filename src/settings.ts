@@ -1,7 +1,6 @@
 /// <reference types="chrome"/>
 
 import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType } from './config';
-import type { ExtensionSettings } from './types';
 
 interface TokenUsage {
   totalTokens: number;
@@ -26,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelSelect = document.getElementById('model') as HTMLSelectElement;
   Object.entries(MODELS)
     .filter(([key]) => key !== 'VISION') // Exclude vision model from settings
-    .forEach(([_, value]) => {
+    .forEach(([, value]) => {
       const option = document.createElement('option');
       option.value = value;
       option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];

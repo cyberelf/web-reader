@@ -26,6 +26,7 @@ export function setupContextModes(): void {
       if (!mode) return;
 
       currentMode = mode;
+      currentScreenshot = null; // Reset screenshot when changing modes
       updateHighlight(index, sliderHighlight);
       updateModeUI(mode, screenshotBtn, dropZone, contentPreview);
     });
@@ -49,7 +50,7 @@ export function setupContextModes(): void {
 }
 
 function updateHighlight(index: number, highlight: Element): void {
-  const width = 100 / 3; // 3 options
+  const width = 100;
   highlight.setAttribute('style', `transform: translateX(${width * index}%)`);
 }
 
@@ -130,9 +131,10 @@ export function getPageContent(): string {
   switch (currentMode) {
     case 'page':
       return document.body.innerText;
-    case 'selection':
+    case 'selection': {
       const selection = window.getSelection();
       return selection ? selection.toString() : '';
+    }
     case 'screenshot':
       return currentScreenshot || '';
     default:

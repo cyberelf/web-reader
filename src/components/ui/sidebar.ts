@@ -2,7 +2,7 @@
 
 import { configureMarked } from '../../utils/markdown';
 import { applyTheme } from '../../utils/theme';
-import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL } from '../../config';
+import { MODELS, MODEL_DISPLAY_NAMES } from '../../config';
 import type { ModelType } from '../../config';
 import type { Theme } from '../../utils/theme';
 
@@ -81,7 +81,7 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
     e.preventDefault();
   }
 
-  function onDragEnd(e: MouseEvent | TouchEvent): void {
+  function onDragEnd(): void {
     window.clearTimeout(dragState.pressTimer);
     const pressDuration = dragState.pressStartTime ? Date.now() - dragState.pressStartTime : 0;
     
@@ -164,7 +164,7 @@ export function createSidebar(): void {
   
   const modelSelectorHtml = Object.entries(MODELS)
     .filter(([key]) => key !== 'VISION')
-    .map(([_, value]) => `
+    .map(([, value]) => `
       <option value="${value}">${MODEL_DISPLAY_NAMES[value as ModelType]}</option>
     `)
     .join('');
@@ -258,12 +258,10 @@ export function createSidebar(): void {
 
 function setupEventListeners(): void {
   const sidebar = document.getElementById('page-reader-sidebar');
-  const toggleButton = document.getElementById('page-reader-toggle');
-  const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
-  const askButton = document.getElementById('ask-button');
-  const clearButton = document.querySelector('.clear-chat');
-  const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
   const themeToggle = document.getElementById('theme-toggle');
+  const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
+  const modal = document.getElementById('clear-confirm-modal');
+  const clearButton = document.querySelector('.clear-chat');
   
   // Set initial theme
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -291,7 +289,6 @@ function setupEventListeners(): void {
   });
 
   // Clear chat confirmation modal
-  const modal = document.getElementById('clear-confirm-modal');
   const confirmButton = modal?.querySelector('.confirm-button');
   const cancelButton = modal?.querySelector('.cancel-button');
 
@@ -314,7 +311,7 @@ function setupEventListeners(): void {
   cancelButton?.addEventListener('click', closeModal);
 
   // Close modal on outside click
-  modal?.addEventListener('click', (e) => {
+  modal?.addEventListener('click', (e: Event) => {
     if (e.target === modal) {
       closeModal();
     }
