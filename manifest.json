@@ -26,22 +26,20 @@
     {
       "matches": ["<all_urls>"],
       "css": ["sidebar.css"],
-      "js": ["lib/marked.min.js", "src/main.js"],
-      "type": "module"
+      "js": ["lib/marked.min.js", "dist/main.js"]
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "dist/background.js",
+    "type": "module"
   },
   "web_accessible_resources": [
     {
       "resources": [
         "settings.css",
-        "settings.js",
-        "src/*.js",
-        "src/*/*.js",
-        "src/*/*/*.js",
-        "src/config.js"
+        "dist/*.js",
+        "dist/*/*.js",
+        "dist/*/*/*.js"
       ],
       "matches": ["<all_urls>"]
     },
