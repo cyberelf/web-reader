@@ -34,11 +34,12 @@ export async function loadChatHistory(): Promise<void> {
     
     const histories = result.chatHistories || {};
     const currentUrl = String(window.location.href);
-    currentHistory = histories[currentUrl] || { messages: [], url: window.location.href };
+    const urlHistory = histories[currentUrl];
+    currentHistory = urlHistory ? { ...urlHistory } : { messages: [], url: currentUrl };
     
     // Clear existing messages except the clear button
     const clearButton = answerDiv.querySelector('.clear-chat');
-    const messages = answerDiv.querySelectorAll('.message');
+    const messages = answerDiv.querySelectorAll('.ai-chat-message');
     messages.forEach(message => message.remove());
     
     // Add messages
@@ -135,14 +136,19 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'ai-message-content';
-  contentDiv.innerHTML = renderMarkdown(message.content);
+  contentDiv.textContent = message.content;
+  if (message.role === 'assistant') {
+    contentDiv.innerHTML = renderMarkdown(message.content);
+  }
   
   const footerDiv = document.createElement('div');
   footerDiv.className = 'ai-message-footer';
   
   const timeDiv = document.createElement('div');
   timeDiv.className = 'ai-message-time';
-  timeDiv.textContent = new Date(message.timestamp).toLocaleTimeString();
+  timeDiv.textContent = typeof message.timestamp === 'string' 
+    ? message.timestamp 
+    : new Date(message.timestamp).toLocaleTimeString();
 
   const modelInfoContainer = document.createElement('div');
   modelInfoContainer.className = 'model-info-container';
