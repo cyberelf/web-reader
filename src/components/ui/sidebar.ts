@@ -1,10 +1,12 @@
 /// <reference types="chrome"/>
 
-import { configureMarked } from '../../utils/markdown';
+import { configureMarked, renderMarkdown } from '../../utils/markdown';
 import { applyTheme } from '../../utils/theme';
 import { MODELS, MODEL_DISPLAY_NAMES } from '../../config';
 import type { ModelType } from '../../config';
 import type { Theme } from '../../utils/theme';
+import { setupContextModes } from '../context/contextModes';
+import { ShortcutHandler } from '../chat/shortcutHandler';
 
 interface Position {
   x: number;
@@ -41,62 +43,82 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   toggleButton.style.top = DEFAULT_ICON_POSITION.top;
   toggleButton.style.right = DEFAULT_ICON_POSITION.right;
   toggleButton.style.left = 'auto';
-  dragState.currentPosition.x = window.innerWidth - toggleButton.offsetWidth - 20;
-  dragState.currentPosition.y = 20;
-
+  
+  // Always show the button initially
+  toggleButton.style.display = 'block';
+  
   // Check visibility setting
   chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
-    toggleButton.style.display = result.showIcon === false ? 'none' : 'block';
+    if (result.showIcon === false) {
+      toggleButton.style.display = 'none';
+    }
   });
 
   function onDragStart(e: MouseEvent | TouchEvent): void {
-    dragState.pressStartTime = Date.now();
-    // Start press timer
-    dragState.pressTimer = window.setTimeout(() => {
-      if (e.target === toggleButton) {
-        dragState.isDragging = true;
-        dragState.hasStartedDrag = true;
-        toggleButton.classList.add('dragging');
-        
-        const rect = toggleButton.getBoundingClientRect();
-        dragState.currentPosition = {
-          x: rect.left,
-          y: rect.top
-        };
-
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-        dragState.initialPosition = {
-          x: clientX - dragState.currentPosition.x,
-          y: clientY - dragState.currentPosition.y
-        };
-
-        toggleButton.style.right = 'auto';
-        toggleButton.style.left = dragState.currentPosition.x + 'px';
-        toggleButton.style.top = dragState.currentPosition.y + 'px';
+    if (e instanceof MouseEvent) {
+      // Left click should open sidebar
+      if (e.button === 0) {
+        e.preventDefault();
+        const sidebar = document.getElementById('page-reader-sidebar');
+        if (sidebar) {
+          if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+          } else {
+            sidebar.classList.add('open');
+          }
+        }
+        return;
       }
-    }, 200);
+      // Only start drag on right click
+      if (e.button !== 2) {
+        return;
+      }
+    }
 
     e.preventDefault();
+    dragState.pressStartTime = Date.now();
+    
+    // Start press timer for touch events only
+    if ('touches' in e) {
+      dragState.pressTimer = window.setTimeout(() => {
+        startDragging(e);
+      }, 200);
+    } else {
+      // For right click, start dragging immediately
+      startDragging(e);
+    }
+  }
+
+  function startDragging(e: MouseEvent | TouchEvent): void {
+    if (e.target === toggleButton) {
+      dragState.isDragging = true;
+      dragState.hasStartedDrag = true;
+      toggleButton.classList.add('dragging');
+      
+      const rect = toggleButton.getBoundingClientRect();
+      dragState.currentPosition = {
+        x: rect.left,
+        y: rect.top
+      };
+
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+      dragState.initialPosition = {
+        x: clientX - dragState.currentPosition.x,
+        y: clientY - dragState.currentPosition.y
+      };
+
+      toggleButton.style.right = 'auto';
+      toggleButton.style.left = dragState.currentPosition.x + 'px';
+      toggleButton.style.top = dragState.currentPosition.y + 'px';
+    }
   }
 
   function onDragEnd(): void {
     window.clearTimeout(dragState.pressTimer);
-    const pressDuration = dragState.pressStartTime ? Date.now() - dragState.pressStartTime : 0;
     
-    if (!dragState.isDragging && pressDuration < 200) {
-      // Handle as click if press was short and no drag occurred
-      const sidebar = document.getElementById('page-reader-sidebar');
-      if (sidebar?.classList.contains('open')) {
-        sidebar.classList.remove('open');
-      } else if (sidebar) {
-        sidebar.classList.add('open');
-        // TODO: Implement these functions
-        // loadChatHistory();
-        // updateContentPreview();
-      }
-    } else if (dragState.isDragging) {
+    if (dragState.isDragging) {
       dragState.isDragging = false;
       dragState.hasStartedDrag = false;
       toggleButton.classList.remove('dragging');
@@ -155,6 +177,11 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
       dragState.hasStartedDrag = false;
       toggleButton.classList.remove('dragging');
     }
+  });
+
+  // Prevent context menu on right click
+  toggleButton.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
   });
 }
 
@@ -243,17 +270,20 @@ export function createSidebar(): void {
   document.body.appendChild(sidebar);
   document.body.appendChild(toggleButton);
 
-  setupToggleButton(toggleButton);
+  // Configure marked first
   configureMarked();
+
+  // Set up event listeners
   setupEventListeners();
-  // TODO: Implement this function
-  // loadChatHistory();
 
   // Add custom-scrollbar class to elements
   const contentPreview = document.getElementById('content-preview');
   const answer = document.getElementById('answer');
   contentPreview?.classList.add('custom-scrollbar');
   answer?.classList.add('custom-scrollbar');
+
+  // Set up toggle button last
+  setupToggleButton(toggleButton);
 }
 
 function setupEventListeners(): void {
@@ -262,7 +292,31 @@ function setupEventListeners(): void {
   const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
   const modal = document.getElementById('clear-confirm-modal');
   const clearButton = document.querySelector('.clear-chat');
+  const askButton = document.getElementById('ask-button');
+  const questionInput = document.getElementById('question') as HTMLTextAreaElement;
+  const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
   
+  // Initialize shortcut handler
+  if (questionInput) {
+    new ShortcutHandler(questionInput);
+  }
+
+  // Initialize model selector
+  if (modelSelector) {
+    // Clear existing options
+    modelSelector.innerHTML = '';
+    
+    // Add model options
+    Object.entries(MODELS)
+      .filter(([key]) => key !== 'VISION')
+      .forEach(([key, value]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
+        modelSelector.appendChild(option);
+      });
+  }
+
   // Set initial theme
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   let currentTheme: Theme = (localStorage.getItem('theme') as Theme) || (prefersDark ? 'dark' : 'light');
@@ -286,6 +340,23 @@ function setupEventListeners(): void {
   // Close button
   closeButton?.addEventListener('click', () => {
     sidebar?.classList.remove('open');
+  });
+
+  // Ask button
+  askButton?.addEventListener('click', () => {
+    if (questionInput && questionInput.value.trim()) {
+      // TODO: Implement question handling
+      console.log('Question:', questionInput.value);
+      questionInput.value = '';
+    }
+  });
+
+  // Question input enter key
+  questionInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      askButton?.click();
+    }
   });
 
   // Clear chat confirmation modal
@@ -316,9 +387,4 @@ function setupEventListeners(): void {
       closeModal();
     }
   });
-
-  // TODO: Implement these functions
-  // setupContextModes();
-  // setupSelectionHandler();
-  // setupShortcutAutocomplete();
 } 

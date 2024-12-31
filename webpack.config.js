@@ -1,30 +1,39 @@
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: {
-    main: './src/main.ts',
-    background: './src/background.ts',
-    settings: './src/settings.ts'
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        use: 'ts-loader',
-        exclude: /node_modules/
-      }
-    ]
-  },
-  resolve: {
-    extensions: ['.ts', '.js']
+    content: './src/main.ts',
+    background: './src/background.ts'
   },
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist')
   },
-  optimization: {
-    splitChunks: {
-      chunks: 'all'
-    }
-  }
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
+      }
+    ]
+  },
+  resolve: {
+    extensions: ['.tsx', '.ts', '.js']
+  },
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'icons', to: 'icons' },
+        { from: 'src/manifest.json', to: 'manifest.json' },
+        { from: 'src/styles.css', to: 'styles.css' },
+        { from: 'src/popup.html', to: 'popup.html' }
+      ]
+    })
+  ]
 }; 

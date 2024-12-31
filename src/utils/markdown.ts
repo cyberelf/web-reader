@@ -1,22 +1,13 @@
-declare const marked: {
-  setOptions: (options: {
-    breaks: boolean;
-    gfm: boolean;
-    highlight?: (code: string, lang: string) => string;
-  }) => void;
-  parse: (markdown: string) => string;
-};
+import { marked } from 'marked';
 
 export function configureMarked(): void {
   marked.setOptions({
     breaks: true,
     gfm: true,
-    highlight: (code: string, lang: string): string => {
-      return `<pre><code class="language-${lang}">${code}</code></pre>`;
-    }
+    async: false
   });
 }
 
 export function renderMarkdown(text: string): string {
-  return marked.parse(text);
+  return marked.parse(text, { async: false }) as string;
 } 

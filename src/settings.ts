@@ -20,18 +20,55 @@ interface StorageResult {
   customPrompts?: CustomPrompts;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Populate model selector
-  const modelSelect = document.getElementById('model') as HTMLSelectElement;
-  Object.entries(MODELS)
-    .filter(([key]) => key !== 'VISION') // Exclude vision model from settings
-    .forEach(([, value]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
-      modelSelect.appendChild(option);
-    });
+// Add this type definition
+const AVAILABLE_MODELS = {
+  'GPT-3.5': 'gpt-3.5-turbo',
+  'GPT-4': 'gpt-4',
+  'GPT-4 Turbo': 'gpt-4-1106-preview'
+} as const;
 
+export interface Settings {
+  apiKey?: string;
+  apiUrl?: string;
+  model?: string;
+  showIcon: boolean;
+  shortcuts: { [key: string]: string };
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  apiUrl: 'https://api.openai.com/v1',
+  showIcon: true,
+  shortcuts: {
+    '/help': 'Show available commands',
+    '/clear': 'Clear chat history',
+    '/model': 'Change AI model',
+    '/screenshot': 'Take a screenshot'
+  }
+};
+
+export async function getSettings(): Promise<Settings> {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['settings'], (result) => {
+      resolve(result.settings || DEFAULT_SETTINGS);
+    });
+  });
+}
+
+export async function updateSettings(settings: Partial<Settings>): Promise<void> {
+  const current = await getSettings();
+  const updated = { ...current, ...settings };
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ settings: updated }, resolve);
+  });
+}
+
+export async function clearApiKey(): Promise<void> {
+  const settings = await getSettings();
+  delete settings.apiKey;
+  return updateSettings(settings);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
   // Load saved settings
   chrome.storage.sync.get(['openaiApiKey', 'tokenUsage', 'selectedModel', 'openaiUrl'], (result: StorageResult) => {
     if (result.openaiApiKey) {
@@ -39,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (result.selectedModel) {
-      (document.getElementById('model') as HTMLSelectElement).value = result.selectedModel;
+      (document.getElementById('model-selector') as HTMLSelectElement).value = result.selectedModel;
     } else {
-      (document.getElementById('model') as HTMLSelectElement).value = DEFAULT_MODEL;
+      (document.getElementById('model-selector') as HTMLSelectElement).value = DEFAULT_MODEL;
     }
     
     if (result.tokenUsage) {
@@ -56,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Save settings
   document.querySelector('.save-button')?.addEventListener('click', () => {
     const apiKey = (document.getElementById('api-key') as HTMLInputElement).value;
-    const selectedModel = (document.getElementById('model') as HTMLSelectElement).value as ModelType;
+    const selectedModel = (document.getElementById('model-selector') as HTMLSelectElement).value as ModelType;
     const openaiUrl = (document.getElementById('openai-url') as HTMLInputElement).value;
     
     chrome.storage.sync.set({
