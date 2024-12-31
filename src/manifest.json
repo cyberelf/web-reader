@@ -1,34 +1,21 @@
 {
   "manifest_version": 3,
   "name": "Web Reader",
-  "version": "1.0.0",
-  "description": "AI-powered web page reader",
+  "version": "1.0",
+  "description": "AI-powered web page reader and analyzer",
   "permissions": [
     "activeTab",
-    "scripting",
     "storage",
-    "tabs",
-    "commands"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["main.js"],
-      "matches": ["<all_urls>"]
-    }
-  ],
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
@@ -37,6 +24,11 @@
     },
     "default_title": "Web Reader",
     "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "commands": {
     "_execute_action": {
@@ -53,5 +45,18 @@
       },
       "description": "Toggle Web Reader sidebar"
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js", "styles.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 } 
