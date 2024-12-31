@@ -4,10 +4,24 @@ import { createSidebar } from './components/ui/sidebar';
 import { setupContextModes } from './components/context/contextModes';
 import { handleQuestion } from './components/chat/messageHandler';
 import { loadChatHistory } from './components/chat/chatHistory';
+import { loadCustomPrompts } from './components/chat/promptShortcuts';
 
-function initializeExtension() {
+// Add message listener for icon visibility updates
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'updateIconVisibility') {
+    const toggleButton = document.getElementById('page-reader-toggle');
+    if (toggleButton) {
+      toggleButton.style.display = message.showIcon ? 'block' : 'none';
+    }
+  }
+});
+
+async function initializeExtension() {
   try {
-    // Create sidebar first
+    // Load custom prompts first
+    await loadCustomPrompts();
+
+    // Create sidebar
     createSidebar();
     
     // Wait for sidebar to be fully created
@@ -36,9 +50,5 @@ function initializeExtension() {
   }
 }
 
-// Wait for DOM to be fully loaded before initializing
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeExtension);
-} else {
-  initializeExtension();
-} 
+// Initialize extension when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeExtension); 

@@ -1,67 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      width: 300px;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .header img {
-      width: 24px;
-      height: 24px;
-      margin-right: 8px;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .shortcuts {
-      background: #f5f5f5;
-      border-radius: 6px;
-      padding: 12px;
-      margin-top: 12px;
-    }
-    .shortcut {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    .shortcut:last-child {
-      margin-bottom: 0;
-    }
-    .key {
-      background: #fff;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      border: 1px solid #ddd;
-    }
-  </style>
+  <title>Web Reader Settings</title>
+  <link rel="stylesheet" href="settings.css">
 </head>
 <body>
-  <div class="header">
-    <img src="icons/icon48.png" alt="Web Reader">
-    <h1>Web Reader</h1>
-  </div>
-  <p>Use Web Reader to analyze and interact with web pages using AI.</p>
-  <div class="shortcuts">
-    <div class="shortcut">
-      <span>Toggle Sidebar</span>
-      <span class="key">Alt+Shift+K</span>
+  <div class="settings-container">
+    <div class="setting-group">
+      <label for="api-key">OpenAI API Key</label>
+      <div class="api-key-container">
+        <input type="password" id="api-key" placeholder="sk-..." />
+        <button id="toggle-api-key" class="toggle-api-key" aria-label="Toggle API key visibility">
+          <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="shortcut">
-      <span>Open Extension</span>
-      <span class="key">Ctrl+Shift+K</span>
+    <div class="setting-group">
+      <label for="model">Model</label>
+      <select id="model-selector">
+        <!-- Options will be populated by JavaScript -->
+      </select>
+    </div>
+    <div class="setting-group">
+      <label for="openai-url">OpenAI API URL</label>
+      <input type="url" id="openai-url" placeholder="https://api.openai.com/v1" />
+    </div>
+    <div class="setting-group">
+      <div class="toggle-group">
+        <label for="show-icon">Show Icon</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="show-icon" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>Custom Prompts</h3>
+      <div class="custom-prompts-container">
+        <!-- Custom prompt items will be added here -->
+      </div>
+      <button class="ai-add-prompt">Add Custom Prompt</button>
+    </div>
+    <button class="save-button ai-primary-button">Save Settings</button>
+    <div class="token-usage">
+      <p>Total Tokens: <span id="total-tokens">0</span></p>
+      <p>Total Requests: <span id="request-count">0</span></p>
+      <p>Average Tokens/Request: <span id="avg-tokens">0</span></p>
     </div>
   </div>
+  <script src="popup.js"></script>
 </body>
 </html> 

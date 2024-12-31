@@ -4,6 +4,7 @@ type ContextMode = 'page' | 'selection' | 'screenshot';
 
 let currentMode: ContextMode = 'page';
 let currentScreenshot: string | null = null;
+let lastSelection: string = '';
 
 function displayImage(src: string, container: HTMLElement | null): void {
   if (!container) return;
@@ -19,11 +20,32 @@ function displayImage(src: string, container: HTMLElement | null): void {
   if (clearButton) {
     clearButton.addEventListener('click', () => {
       if (container) {
-        container.innerHTML = '';
+        container.innerHTML = `
+          <div id="drop-zone">
+            <p>Take a screenshot or drag and drop an image here</p>
+          </div>
+        `;
         currentScreenshot = null;
       }
     });
   }
+}
+
+function setupEventListeners(contentPreview: HTMLElement): void {
+  // Set up selection change handler
+  document.addEventListener('selectionchange', () => {
+    if (currentMode === 'selection') {
+      const selection = window.getSelection()?.toString().trim() || '';
+      if (selection) {
+        lastSelection = selection;
+      }
+      contentPreview.textContent = lastSelection
+        ? lastSelection.length > 50 
+          ? lastSelection.substring(0, 50) + '...'
+          : lastSelection
+        : 'No text selected. Select some text on the page to analyze it.';
+    }
+  });
 }
 
 export function setupContextModes(): void {
@@ -44,19 +66,33 @@ export function setupContextModes(): void {
       return;
     }
 
+    // Set up event listeners
+    setupEventListeners(contentPreview);
+
     function updateHighlight(index: number, highlight: Element): void {
       highlight.setAttribute('style', `transform: translateX(${index * 100}%)`);
     }
 
     function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZone: HTMLElement, preview: HTMLElement): void {
       screenshotBtn.classList.toggle('hidden', mode !== 'screenshot');
-      dropZone.classList.toggle('hidden', mode !== 'screenshot');
-      if (mode !== 'screenshot') {
-        preview.textContent = mode === 'page' 
-          ? 'Full page content will be analyzed'
-          : mode === 'selection'
-          ? 'Select text on the page to analyze'
-          : '';
+      
+      if (mode === 'screenshot') {
+        preview.innerHTML = `
+          <div id="drop-zone">
+            <p>Take a screenshot or drag and drop an image here</p>
+          </div>
+        `;
+      } else if (mode === 'page') {
+        const pageContent = document.body.innerText.trim();
+        preview.textContent = pageContent.length > 50 
+          ? pageContent.substring(0, 50) + '... (Full page will be analyzed)'
+          : pageContent;
+      } else if (mode === 'selection') {
+        preview.textContent = lastSelection
+          ? lastSelection.length > 50 
+            ? lastSelection.substring(0, 50) + '...'
+            : lastSelection
+          : 'No text selected. Select some text on the page to analyze it.';
       }
     }
 
@@ -70,14 +106,14 @@ export function setupContextModes(): void {
         currentMode = mode;
         if (mode !== 'screenshot') {
           currentScreenshot = null;
-          if (contentPreview) {
-            contentPreview.innerHTML = '';
-          }
         }
         updateHighlight(index, sliderHighlight);
         updateModeUI(mode, screenshotBtn, dropZone, contentPreview);
       });
     });
+
+    // Initialize with page content
+    updateModeUI('page', screenshotBtn, dropZone, contentPreview);
 
     // Set up screenshot button
     screenshotBtn.addEventListener('click', async () => {
@@ -145,7 +181,7 @@ export function getPageContent(): string {
     case 'page':
       return document.body.innerText;
     case 'selection':
-      return window.getSelection()?.toString() || '';
+      return lastSelection || window.getSelection()?.toString() || '';
     case 'screenshot':
       return currentScreenshot || '';
     default:

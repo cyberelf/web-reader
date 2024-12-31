@@ -5,8 +5,10 @@ import { applyTheme } from '../../utils/theme';
 import { MODELS, MODEL_DISPLAY_NAMES } from '../../config';
 import type { ModelType } from '../../config';
 import type { Theme } from '../../utils/theme';
-import { setupContextModes } from '../context/contextModes';
+import { setupContextModes, getPageContent } from '../context/contextModes';
 import { ShortcutHandler } from '../chat/shortcutHandler';
+import { handleQuestion } from '../chat/messageHandler';
+import { clearChatHistory } from '../chat/chatHistory';
 
 interface Position {
   x: number;
@@ -26,6 +28,10 @@ interface StorageResult {
   showIcon?: boolean;
 }
 
+interface ModelSettings {
+  selectedModel?: ModelType;
+}
+
 const DEFAULT_ICON_POSITION = {
   top: '20px',
   right: '20px'
@@ -36,7 +42,9 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
     isDragging: false,
     hasStartedDrag: false,
     currentPosition: { x: 0, y: 0 },
-    initialPosition: { x: 0, y: 0 }
+    initialPosition: { x: 0, y: 0 },
+    pressTimer: undefined,
+    pressStartTime: undefined
   };
 
   // Reset to default position on every page load
@@ -46,19 +54,90 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   
   // Always show the button initially
   toggleButton.style.display = 'block';
+  toggleButton.style.visibility = 'visible';
   
-  // Check visibility setting
-  chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
-    if (result.showIcon === false) {
-      toggleButton.style.display = 'none';
-    }
-  });
+  // Check visibility setting after a small delay to ensure storage is ready
+  setTimeout(() => {
+    chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
+      if (result.showIcon === false) {
+        toggleButton.style.display = 'none';
+      } else {
+        toggleButton.style.display = 'block';
+      }
+    });
+  }, 100);
 
   function onDragStart(e: MouseEvent | TouchEvent): void {
     if (e instanceof MouseEvent) {
-      // Left click should open sidebar
-      if (e.button === 0) {
-        e.preventDefault();
+      // Only handle left click
+      if (e.button !== 0 || e.target !== toggleButton) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();  // Prevent event from bubbling up
+      
+      // Start tracking potential drag
+      dragState.pressStartTime = Date.now();
+      dragState.currentPosition = {
+        x: toggleButton.getBoundingClientRect().left,
+        y: toggleButton.getBoundingClientRect().top
+      };
+    } else {
+      // For touch events, start a timer for potential drag
+      if (e.target !== toggleButton) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();  // Prevent event from bubbling up
+      
+      dragState.pressStartTime = Date.now();
+      dragState.pressTimer = window.setTimeout(() => {
+        startDragging(e);
+      }, 500);
+    }
+  }
+
+  function startDragging(e: MouseEvent | TouchEvent): void {
+    if (e.target !== toggleButton) return;
+
+    dragState.isDragging = true;
+    dragState.hasStartedDrag = true;
+    toggleButton.classList.add('dragging');
+    
+    const rect = toggleButton.getBoundingClientRect();
+    dragState.currentPosition = {
+      x: rect.left,
+      y: rect.top
+    };
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    dragState.initialPosition = {
+      x: clientX - dragState.currentPosition.x,
+      y: clientY - dragState.currentPosition.y
+    };
+
+    toggleButton.style.right = 'auto';
+    toggleButton.style.left = dragState.currentPosition.x + 'px';
+    toggleButton.style.top = dragState.currentPosition.y + 'px';
+  }
+
+  function onDragEnd(e: MouseEvent | TouchEvent): void {
+    if (e.target !== toggleButton && !dragState.isDragging) {
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();  // Prevent event from bubbling up
+
+    // Clear the press timer
+    window.clearTimeout(dragState.pressTimer);
+
+    // Handle click/tap to toggle sidebar if we weren't dragging
+    if (!dragState.isDragging) {
+      if (e instanceof MouseEvent && e.button === 0) {
+        // Toggle sidebar on left click release if no drag occurred
         const sidebar = document.getElementById('page-reader-sidebar');
         if (sidebar) {
           if (sidebar.classList.contains('open')) {
@@ -67,57 +146,28 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
             sidebar.classList.add('open');
           }
         }
-        return;
+      } else if (!(e instanceof MouseEvent)) {
+        // For touch events, check if it was a quick tap
+        const pressEndTime = Date.now();
+        const pressDuration = pressEndTime - (dragState.pressStartTime || 0);
+        
+        if (pressDuration < 200) {
+          const sidebar = document.getElementById('page-reader-sidebar');
+          if (sidebar) {
+            if (sidebar.classList.contains('open')) {
+              sidebar.classList.remove('open');
+            } else {
+              sidebar.classList.add('open');
+            }
+          }
+        }
       }
-      // Only start drag on right click
-      if (e.button !== 2) {
-        return;
-      }
     }
 
-    e.preventDefault();
-    dragState.pressStartTime = Date.now();
-    
-    // Start press timer for touch events only
-    if ('touches' in e) {
-      dragState.pressTimer = window.setTimeout(() => {
-        startDragging(e);
-      }, 200);
-    } else {
-      // For right click, start dragging immediately
-      startDragging(e);
-    }
-  }
+    dragState.pressTimer = undefined;
+    dragState.pressStartTime = undefined;
 
-  function startDragging(e: MouseEvent | TouchEvent): void {
-    if (e.target === toggleButton) {
-      dragState.isDragging = true;
-      dragState.hasStartedDrag = true;
-      toggleButton.classList.add('dragging');
-      
-      const rect = toggleButton.getBoundingClientRect();
-      dragState.currentPosition = {
-        x: rect.left,
-        y: rect.top
-      };
-
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-      dragState.initialPosition = {
-        x: clientX - dragState.currentPosition.x,
-        y: clientY - dragState.currentPosition.y
-      };
-
-      toggleButton.style.right = 'auto';
-      toggleButton.style.left = dragState.currentPosition.x + 'px';
-      toggleButton.style.top = dragState.currentPosition.y + 'px';
-    }
-  }
-
-  function onDragEnd(): void {
-    window.clearTimeout(dragState.pressTimer);
-    
+    // If we were dragging, finish the drag
     if (dragState.isDragging) {
       dragState.isDragging = false;
       dragState.hasStartedDrag = false;
@@ -131,9 +181,30 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   }
 
   function onDragMove(e: MouseEvent | TouchEvent): void {
+    if (e.target !== toggleButton && !dragState.isDragging) {
+      return;
+    }
+    
+    // If we haven't started dragging yet, check if we should start
+    if (!dragState.isDragging && dragState.pressStartTime) {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const rect = toggleButton.getBoundingClientRect();
+      const distance = Math.sqrt(
+        Math.pow(clientX - (rect.left + rect.width / 2), 2) +
+        Math.pow(clientY - (rect.top + rect.height / 2), 2)
+      );
+      
+      // Start dragging if moved more than 5px
+      if (distance > 5) {
+        startDragging(e);
+      }
+    }
+
     if (!dragState.isDragging) return;
 
     e.preventDefault();
+    e.stopPropagation();
     
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -159,9 +230,9 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
     toggleButton.style.top = dragState.currentPosition.y + 'px';
   }
 
-  // Add touch support
+  // Add touch support with passive: false to prevent scrolling
   toggleButton.addEventListener('touchstart', onDragStart, { passive: false });
-  toggleButton.addEventListener('touchend', onDragEnd);
+  toggleButton.addEventListener('touchend', onDragEnd, { passive: false });
   toggleButton.addEventListener('touchmove', onDragMove, { passive: false });
 
   // Add mouse support
@@ -169,9 +240,11 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
 
-  // Cancel drag on mouse leave
+  // Cancel drag and press on mouse/touch leave
   document.addEventListener('mouseleave', () => {
     window.clearTimeout(dragState.pressTimer);
+    dragState.pressTimer = undefined;
+    dragState.pressStartTime = undefined;
     if (dragState.isDragging) {
       dragState.isDragging = false;
       dragState.hasStartedDrag = false;
@@ -186,89 +259,95 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
 }
 
 export function createSidebar(): void {
-  const sidebar = document.createElement('div');
-  sidebar.id = 'page-reader-sidebar';
+  // Check if elements already exist
+  let sidebar = document.getElementById('page-reader-sidebar');
+  let toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
   
-  const modelSelectorHtml = Object.entries(MODELS)
-    .filter(([key]) => key !== 'VISION')
-    .map(([, value]) => `
-      <option value="${value}">${MODEL_DISPLAY_NAMES[value as ModelType]}</option>
-    `)
-    .join('');
-  
-  sidebar.innerHTML = `
-    <div class="sidebar-container">
-      <div class="sidebar-header">
-        <h2>Page Reader Assistant</h2>
-        <div class="header-controls">
-          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="5"></circle>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-            </svg>
-            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </button>
-          <button class="ai-sidebar-close-button" aria-label="Close sidebar">×</button>
+  // If elements already exist, don't create them again
+  if (sidebar && toggleButton) {
+    console.log('Sidebar and toggle button already exist');
+    return;
+  }
+
+  // Create sidebar if it doesn't exist
+  if (!sidebar) {
+    sidebar = document.createElement('div');
+    sidebar.id = 'page-reader-sidebar';
+    
+    sidebar.innerHTML = `
+      <div class="sidebar-container">
+        <div class="sidebar-header">
+          <h2>Page Reader Assistant</h2>
+          <div class="header-controls">
+            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+              <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+              </svg>
+              <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+            <button class="ai-sidebar-close-button" aria-label="Close sidebar">×</button>
+          </div>
         </div>
-      </div>
-      <div class="context-controls">
-        <div class="context-header">
-          <div class="context-mode-wrapper">
-            <div class="slider-container">
-              <div class="slider-option" data-mode="page">Full Page</div>
-              <div class="slider-option" data-mode="selection">Selection</div>
-              <div class="slider-option" data-mode="screenshot">Screenshot</div>
-              <div class="slider-highlight"></div>
+        <div class="context-controls">
+          <div class="context-header">
+            <div class="context-mode-wrapper">
+              <div class="slider-container">
+                <div class="slider-option" data-mode="page">Full Page</div>
+                <div class="slider-option" data-mode="selection">Selection</div>
+                <div class="slider-option" data-mode="screenshot">Screenshot</div>
+                <div class="slider-highlight"></div>
+              </div>
+            </div>
+            <button id="screenshot-btn" class="hidden" aria-label="Take Screenshot">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
+          <div id="context-area">
+            <div id="content-preview"></div>
+            <div id="drop-zone" class="hidden">
+              <p>Take a screenshot or drag and drop an image here</p>
+              <input type="file" id="file-input" accept="image/*" hidden>
             </div>
           </div>
-          <button id="screenshot-btn" class="hidden" aria-label="Take Screenshot">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </button>
         </div>
-        <div id="context-area">
-          <div id="content-preview"></div>
-          <div id="drop-zone" class="hidden">
-            <p>Take a screenshot or drag and drop an image here</p>
-            <input type="file" id="file-input" accept="image/*" hidden>
+        <div id="answer">
+          <button class="clear-chat">Clear Chat History</button>
+        </div>
+        <div class="input-section">
+          <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
+          <div class="bottom-controls">
+            <button id="ask-button">Ask Question</button>
+            <select id="model-selector" class="model-selector"></select>
+          </div>
+        </div>
+        <div class="modal" id="clear-confirm-modal">
+          <div class="modal-content">
+            <h3>Clear Chat History</h3>
+            <p>Are you sure you want to clear the chat history for this page?</p>
+            <div class="modal-actions">
+              <button class="modal-button cancel-button">Cancel</button>
+              <button class="modal-button confirm-button">Clear History</button>
+            </div>
           </div>
         </div>
       </div>
-      <div id="answer">
-        <button class="clear-chat">Clear Chat History</button>
-      </div>
-      <div class="input-section">
-        <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
-        <div class="bottom-controls">
-          <button id="ask-button">Ask Question</button>
-          <select id="model-selector" class="model-selector">
-            ${modelSelectorHtml}
-          </select>
-        </div>
-      </div>
-      <div class="modal" id="clear-confirm-modal">
-        <div class="modal-content">
-          <h3>Clear Chat History</h3>
-          <p>Are you sure you want to clear the chat history for this page?</p>
-          <div class="modal-actions">
-            <button class="modal-button cancel-button">Cancel</button>
-            <button class="modal-button confirm-button">Clear History</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+    `;
+    document.body.appendChild(sidebar);
+  }
 
-  const toggleButton = document.createElement('button');
-  toggleButton.id = 'page-reader-toggle';
-  toggleButton.textContent = 'Ask AI';
-
-  document.body.appendChild(sidebar);
-  document.body.appendChild(toggleButton);
+  // Create toggle button if it doesn't exist
+  if (!toggleButton) {
+    toggleButton = document.createElement('button');
+    toggleButton.id = 'page-reader-toggle';
+    toggleButton.textContent = 'Ask AI';
+    document.body.appendChild(toggleButton);
+  }
 
   // Configure marked first
   configureMarked();
@@ -283,7 +362,9 @@ export function createSidebar(): void {
   answer?.classList.add('custom-scrollbar');
 
   // Set up toggle button last
-  setupToggleButton(toggleButton);
+  if (toggleButton) {
+    setupToggleButton(toggleButton);
+  }
 }
 
 function setupEventListeners(): void {
@@ -343,10 +424,15 @@ function setupEventListeners(): void {
   });
 
   // Ask button
-  askButton?.addEventListener('click', () => {
+  askButton?.addEventListener('click', async () => {
     if (questionInput && questionInput.value.trim()) {
-      // TODO: Implement question handling
-      console.log('Question:', questionInput.value);
+      const content = getPageContent();
+      const question = questionInput.value.trim();
+      const selectedModel = modelSelector?.value as ModelType;
+      
+      // Send question to API
+      await handleQuestion(question, content, selectedModel);
+      
       questionInput.value = '';
     }
   });
@@ -362,6 +448,7 @@ function setupEventListeners(): void {
   // Clear chat confirmation modal
   const confirmButton = modal?.querySelector('.confirm-button');
   const cancelButton = modal?.querySelector('.cancel-button');
+  const answerContainer = document.getElementById('answer');
 
   clearButton?.addEventListener('click', () => {
     modal?.classList.add('show');
@@ -372,9 +459,7 @@ function setupEventListeners(): void {
   };
 
   const handleClear = async (): Promise<void> => {
-    // TODO: Implement these functions
-    // await clearChatHistory();
-    // loadChatHistory();
+    await clearChatHistory();
     closeModal();
   };
 
@@ -385,6 +470,24 @@ function setupEventListeners(): void {
   modal?.addEventListener('click', (e: Event) => {
     if (e.target === modal) {
       closeModal();
+    }
+  });
+
+  // Load saved model selection
+  chrome.storage.sync.get(['settings'], (result: { settings?: { selectedModel?: ModelType } }) => {
+    if (modelSelector && result.settings?.selectedModel) {
+      modelSelector.value = result.settings.selectedModel;
+    }
+  });
+
+  // Save model selection on change
+  modelSelector?.addEventListener('change', () => {
+    if (modelSelector) {
+      chrome.storage.sync.get(['settings'], (result: { settings?: { selectedModel?: ModelType } }) => {
+        const settings = result.settings || {};
+        settings.selectedModel = modelSelector.value as ModelType;
+        chrome.storage.sync.set({ settings });
+      });
     }
   });
 } 
