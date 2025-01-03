@@ -152,6 +152,38 @@ export async function clearChatHistory(): Promise<void> {
   }
 }
 
+export async function updateLastMessage(content: string): Promise<void> {
+  if (currentHistory.messages.length === 0) return;
+
+  const lastMessage = currentHistory.messages[currentHistory.messages.length - 1];
+  if (lastMessage.role !== 'assistant') return;
+
+  lastMessage.content = content;
+
+  try {
+    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
+      chrome.storage.local.get(['chatHistories'], resolve);
+    });
+    
+    const histories = result.chatHistories || {};
+    histories[window.location.href] = currentHistory;
+    
+    await new Promise<void>((resolve) => {
+      chrome.storage.local.set({ chatHistories: histories }, resolve);
+    });
+    
+    const answerDiv = document.getElementById('answer');
+    if (answerDiv) {
+      const lastMessageDiv = answerDiv.querySelector('.ai-assistant-message:last-of-type .ai-message-content');
+      if (lastMessageDiv) {
+        lastMessageDiv.innerHTML = renderMarkdown(content);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update message:', error);
+  }
+}
+
 function createMessageElement(message: ChatMessage): HTMLDivElement {
   const messageDiv = document.createElement('div');
   messageDiv.className = `ai-chat-message ai-${message.role}-message`;
