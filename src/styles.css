@@ -163,17 +163,45 @@
 }
 
 #drop-zone {
-  border: 2px dashed #ddd;
-  border-radius: 4px;
-  padding: 20px;
+  min-height: 120px;
+  padding: 24px;
+  background-color: var(--bg, #ffffff);
+  border: 2px dashed var(--border, #cbd5e1);
+  border-radius: 8px;
   text-align: center;
-  color: #666;
-  transition: all 0.3s ease;
+  color: var(--text, #64748b);
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #drop-zone.drag-over {
-  border-color: #4a90e2;
-  background: rgba(74, 144, 226, 0.1);
+  background-color: var(--hover, #f8fafc);
+  border-color: var(--button-bg, #2962ff);
+}
+
+#drop-zone p {
+  margin: 0;
+  font-size: 14px;
+}
+
+#drop-zone img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.theme-dark #drop-zone {
+  background-color: var(--dark-bg);
+  border-color: var(--dark-border);
+  color: var(--dark-text);
+}
+
+.theme-dark #drop-zone.drag-over {
+  background-color: var(--dark-hover);
+  border-color: var(--dark-button-bg);
 }
 
 .hidden {

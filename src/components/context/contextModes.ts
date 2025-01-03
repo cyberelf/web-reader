@@ -75,13 +75,15 @@ export function setupContextModes(): void {
 
     function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZone: HTMLElement, preview: HTMLElement): void {
       screenshotBtn.classList.toggle('hidden', mode !== 'screenshot');
+      dropZone.classList.toggle('hidden', mode !== 'screenshot');
       
       if (mode === 'screenshot') {
-        preview.innerHTML = `
-          <div id="drop-zone">
-            <p>Take a screenshot or drag and drop an image here</p>
-          </div>
-        `;
+        if (currentScreenshot) {
+          displayImage(currentScreenshot, preview);
+        } else {
+          preview.innerHTML = '';
+          dropZone.innerHTML = '<p>Take a screenshot or drag and drop an image here</p>';
+        }
       } else if (mode === 'page') {
         const pageContent = document.body.innerText.trim();
         preview.textContent = pageContent.length > 50 
@@ -172,6 +174,31 @@ function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
         }
       };
       reader.readAsDataURL(file);
+    }
+  });
+
+  // Also handle paste events
+  document.addEventListener('paste', (e) => {
+    if (currentMode !== 'screenshot') return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              currentScreenshot = reader.result;
+              displayImage(reader.result, preview);
+            }
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
     }
   });
 }
