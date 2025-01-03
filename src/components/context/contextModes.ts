@@ -78,11 +78,12 @@ export function setupContextModes(): void {
       dropZone.classList.toggle('hidden', mode !== 'screenshot');
       
       if (mode === 'screenshot') {
-        if (currentScreenshot) {
-          displayImage(currentScreenshot, preview);
-        } else {
+        if (!currentScreenshot) {
           preview.innerHTML = '';
           dropZone.innerHTML = '<p>Take a screenshot or drag and drop an image here</p>';
+          preview.appendChild(dropZone);
+        } else {
+          displayImage(currentScreenshot, preview);
         }
       } else if (mode === 'page') {
         const pageContent = document.body.innerText.trim();
@@ -151,55 +152,83 @@ export function setupContextModes(): void {
 }
 
 function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
-  dropZone.addEventListener('dragover', (e) => {
+  // Prevent default drag behaviors
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+  });
+
+  // Handle drag enter/leave
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, highlight, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+  });
+
+  // Handle dropped files
+  dropZone.addEventListener('drop', handleDrop, false);
+
+  function preventDefaults(e: Event): void {
     e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function highlight(e: Event): void {
     dropZone.classList.add('drag-over');
-  });
+  }
 
-  dropZone.addEventListener('dragleave', () => {
+  function unhighlight(e: Event): void {
     dropZone.classList.remove('drag-over');
-  });
+  }
 
-  dropZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
+  function handleDrop(e: DragEvent): void {
+    const dt = e.dataTransfer;
+    if (!dt) return;
 
-    const file = e.dataTransfer?.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          currentScreenshot = reader.result;
-          displayImage(reader.result, preview);
-        }
-      };
-      reader.readAsDataURL(file);
+    const files = dt.files;
+    handleFiles(files);
+  }
+
+  function handleFiles(files: FileList): void {
+    if (files.length === 0) return;
+
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      console.error('Please drop an image file');
+      return;
     }
-  });
 
-  // Also handle paste events
-  document.addEventListener('paste', (e) => {
-    if (currentMode !== 'screenshot') return;
-
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === 'string') {
-              currentScreenshot = reader.result;
-              displayImage(reader.result, preview);
-            }
-          };
-          reader.readAsDataURL(file);
-          break;
-        }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        currentScreenshot = reader.result;
+        displayImage(reader.result, preview);
       }
-    }
+    };
+    reader.onerror = () => {
+      console.error('Error reading file');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Handle click to upload
+  dropZone.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', () => {
+      if (input.files) {
+        handleFiles(input.files);
+      }
+      document.body.removeChild(input);
+    });
+
+    input.click();
   });
 }
 
