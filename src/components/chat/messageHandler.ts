@@ -47,7 +47,8 @@ export async function handleQuestion(question: string, context: string, model?: 
       'You are analyzing the current webpage.';
 
     // Create placeholder message for streaming
-    await addMessage('assistant', '', model || settings.model);
+    const selectedModel = model || settings.model;
+    await addMessage('assistant', '', selectedModel);
 
     const response = await fetch(`${settings.apiUrl}/chat/completions`, {
       method: 'POST',
@@ -56,7 +57,7 @@ export async function handleQuestion(question: string, context: string, model?: 
         'Authorization': `Bearer ${settings.apiKey}`
       },
       body: JSON.stringify({
-        model: model || settings.model,
+        model: selectedModel,
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: finalQuestion }
@@ -108,6 +109,6 @@ export async function handleQuestion(question: string, context: string, model?: 
 
   } catch (error) {
     console.error('Error handling question:', error);
-    await addMessage('assistant', `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+    await addMessage('assistant', `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`, model || (await getSettings()).model);
   }
 } 
