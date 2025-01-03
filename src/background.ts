@@ -4,9 +4,13 @@ import type { MessageRequest, FetchImageResponse } from './types';
 
 chrome.runtime.onInstalled.addListener(() => {
   // Set default settings
-  chrome.storage.sync.set({
-    showIcon: true,
-    // other default settings...
+  chrome.storage.sync.get(['showIcon'], (result) => {
+    if (result.showIcon === undefined) {
+      chrome.storage.sync.set({
+        showIcon: true,
+        // other default settings...
+      });
+    }
   });
 });
 
@@ -24,20 +28,32 @@ chrome.commands.onCommand.addListener((command) => {
 
 // Ensure content script runs on all pages
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
+  // Only inject when the tab is ready and has a valid URL
+  if (changeInfo.status === 'complete' && tab.url && tab.id) {
     // Skip chrome:// and chrome-extension:// pages
     if (!tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
-      chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: ['content.js']
-      }).catch(err => {
-        console.error('Failed to inject content script:', err);
-        // Try again with world: 'MAIN' if initial injection fails
-        chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          files: ['content.js'],
-          world: 'MAIN'
-        }).catch(err2 => console.error('Failed second injection attempt:', err2));
+      // Check if the tab still exists before injecting
+      chrome.tabs.get(tab.id, (currentTab) => {
+        if (chrome.runtime.lastError) {
+          console.error('Tab no longer exists:', chrome.runtime.lastError);
+          return;
+        }
+
+        // Only inject if the tab is still active and complete
+        if (currentTab.status === 'complete') {
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          }).catch(err => {
+            console.error('Failed to inject content script:', err);
+            // Try again with world: 'MAIN' if initial injection fails
+            chrome.scripting.executeScript({
+              target: { tabId: tabId },
+              files: ['content.js'],
+              world: 'MAIN'
+            }).catch(err2 => console.error('Failed second injection attempt:', err2));
+          });
+        }
       });
     }
   }

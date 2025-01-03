@@ -52,20 +52,11 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   toggleButton.style.right = DEFAULT_ICON_POSITION.right;
   toggleButton.style.left = 'auto';
   
-  // Always show the button initially
-  toggleButton.style.display = 'block';
-  toggleButton.style.visibility = 'visible';
-  
-  // Check visibility setting after a small delay to ensure storage is ready
-  setTimeout(() => {
-    chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
-      if (result.showIcon === false) {
-        toggleButton.style.display = 'none';
-      } else {
-        toggleButton.style.display = 'block';
-      }
-    });
-  }, 100);
+  // Initialize visibility based on storage
+  chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
+    toggleButton.style.display = result.showIcon !== false ? 'block' : 'none';
+    toggleButton.style.visibility = 'visible';
+  });
 
   function onDragStart(e: MouseEvent | TouchEvent): void {
     if (e instanceof MouseEvent) {
@@ -266,6 +257,7 @@ export function createSidebar(): void {
   // If elements already exist, don't create them again
   if (sidebar && toggleButton) {
     console.log('Sidebar and toggle button already exist');
+    setupToggleButton(toggleButton);
     return;
   }
 
@@ -341,12 +333,10 @@ export function createSidebar(): void {
     document.body.appendChild(sidebar);
   }
 
-  // Create toggle button if it doesn't exist
-  if (!toggleButton) {
-    toggleButton = document.createElement('button');
-    toggleButton.id = 'page-reader-toggle';
-    toggleButton.textContent = 'Ask AI';
-    document.body.appendChild(toggleButton);
+  // Get toggle button if it exists
+  toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
+  if (toggleButton) {
+    setupToggleButton(toggleButton);
   }
 
   // Configure marked first
@@ -360,11 +350,6 @@ export function createSidebar(): void {
   const answer = document.getElementById('answer');
   contentPreview?.classList.add('custom-scrollbar');
   answer?.classList.add('custom-scrollbar');
-
-  // Set up toggle button last
-  if (toggleButton) {
-    setupToggleButton(toggleButton);
-  }
 }
 
 function setupEventListeners(): void {

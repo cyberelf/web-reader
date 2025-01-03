@@ -18,7 +18,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function initializeExtension() {
   try {
-    // Load custom prompts first
+    // Create toggle button first
+    const toggleButton = document.createElement('button');
+    toggleButton.id = 'page-reader-toggle';
+    toggleButton.textContent = 'Ask AI';
+    toggleButton.style.display = 'block'; // Show by default
+    document.body.appendChild(toggleButton);
+
+    // Initialize icon visibility
+    chrome.storage.sync.get(['showIcon'], (result) => {
+      if (toggleButton) {
+        toggleButton.style.display = result.showIcon !== false ? 'block' : 'none';
+      }
+    });
+
+    // Load custom prompts
     await loadCustomPrompts();
 
     // Create sidebar
