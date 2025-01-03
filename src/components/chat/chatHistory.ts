@@ -37,20 +37,30 @@ export async function loadChatHistory(): Promise<void> {
     const urlHistory = histories[currentUrl];
     currentHistory = urlHistory ? { ...urlHistory } : { messages: [], url: currentUrl };
     
-    // Clear existing messages except the clear button
-    const clearButton = answerDiv.querySelector('.clear-chat');
-    const messages = answerDiv.querySelectorAll('.ai-chat-message');
-    messages.forEach(message => message.remove());
+    // Clear existing content
+    answerDiv.innerHTML = '';
     
     // Add messages
     currentHistory.messages.forEach(message => {
       const messageDiv = createMessageElement(message);
-      if (clearButton) {
-        answerDiv.insertBefore(messageDiv, clearButton);
-      } else {
-        answerDiv.appendChild(messageDiv);
-      }
+      answerDiv.appendChild(messageDiv);
     });
+
+    // Add clear button only if there are messages
+    if (currentHistory.messages.length > 0) {
+      const clearButton = document.createElement('button');
+      clearButton.className = 'ai-clear-chat-history';
+      clearButton.textContent = 'Clear Chat History';
+      answerDiv.appendChild(clearButton);
+
+      // Add click handler for clear button
+      clearButton.addEventListener('click', () => {
+        const modal = document.getElementById('ai-clear-confirm-modal');
+        if (modal) {
+          modal.classList.add('show');
+        }
+      });
+    }
     
     // Scroll to bottom
     answerDiv.scrollTop = answerDiv.scrollHeight;
@@ -85,14 +95,26 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
     });
     
     const answerDiv = document.getElementById('answer');
-    const clearButton = answerDiv?.querySelector('.clear-chat');
     if (answerDiv) {
       const messageDiv = createMessageElement(message);
-      if (clearButton) {
-        answerDiv.insertBefore(messageDiv, clearButton);
-      } else {
-        answerDiv.appendChild(messageDiv);
+      answerDiv.appendChild(messageDiv);
+
+      // Add clear button if this is the first message
+      if (currentHistory.messages.length === 1) {
+        const clearButton = document.createElement('button');
+        clearButton.className = 'ai-clear-chat-history';
+        clearButton.textContent = 'Clear Chat History';
+        answerDiv.appendChild(clearButton);
+
+        // Add click handler for clear button
+        clearButton.addEventListener('click', () => {
+          const modal = document.getElementById('ai-clear-confirm-modal');
+          if (modal) {
+            modal.classList.add('show');
+          }
+        });
       }
+
       answerDiv.scrollTop = answerDiv.scrollHeight;
     }
   } catch (error) {
@@ -119,7 +141,7 @@ export async function clearChatHistory(): Promise<void> {
     const answerDiv = document.getElementById('answer');
     if (answerDiv) {
       // Keep the clear chat button and remove all messages
-      const clearButton = answerDiv.querySelector('.clear-chat');
+      const clearButton = answerDiv.querySelector('.ai-clear-chat-history');
       answerDiv.innerHTML = '';
       if (clearButton) {
         answerDiv.appendChild(clearButton);

@@ -744,4 +744,23 @@
 
 #screenshot-btn.hidden {
   display: none;
+}
+
+.ai-clear-chat-history {
+  padding: 8px 16px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 8px auto;
+  display: block;
+}
+
+.ai-clear-chat-history:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
 } 

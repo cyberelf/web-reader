@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
 
-import { createSidebar } from './components/ui/sidebar';
+import { createSidebar, setupToggleButton } from './components/ui/sidebar';
 import { setupContextModes } from './components/context/contextModes';
 import { handleQuestion } from './components/chat/messageHandler';
 import { loadChatHistory } from './components/chat/chatHistory';
@@ -12,25 +12,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const toggleButton = document.getElementById('page-reader-toggle');
     if (toggleButton) {
       toggleButton.style.display = message.showIcon ? 'block' : 'none';
+      chrome.storage.sync.get(['settings'], (result) => {
+        const settings = result.settings || {};
+        settings.showIcon = message.showIcon;
+        chrome.storage.sync.set({ settings });
+      });
     }
   }
 });
 
 async function initializeExtension() {
   try {
-    // Create toggle button first
-    const toggleButton = document.createElement('button');
-    toggleButton.id = 'page-reader-toggle';
-    toggleButton.textContent = 'Ask AI';
-    toggleButton.style.display = 'block'; // Show by default
-    document.body.appendChild(toggleButton);
+    // Check if button already exists
+    let toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
+    
+    // Create toggle button if it doesn't exist
+    if (!toggleButton) {
+      toggleButton = document.createElement('button');
+      toggleButton.id = 'page-reader-toggle';
+      toggleButton.textContent = 'Ask AI';
+      toggleButton.style.visibility = 'hidden'; // Hide initially
+      document.body.appendChild(toggleButton);
+    }
 
-    // Initialize icon visibility
-    chrome.storage.sync.get(['showIcon'], (result) => {
+    // Initialize icon visibility using settings format
+    chrome.storage.sync.get(['settings'], (result) => {
       if (toggleButton) {
-        toggleButton.style.display = result.showIcon !== false ? 'block' : 'none';
+        const settings = result.settings || {};
+        toggleButton.style.display = settings.showIcon !== false ? 'block' : 'none';
+        toggleButton.style.visibility = 'visible'; // Show after display is set
       }
     });
+
+    // Setup toggle button event handlers
+    setupToggleButton(toggleButton);
 
     // Load custom prompts
     await loadCustomPrompts();
@@ -64,5 +79,9 @@ async function initializeExtension() {
   }
 }
 
-// Initialize extension when DOM is loaded
-document.addEventListener('DOMContentLoaded', initializeExtension); 
+// Initialize extension when DOM is loaded or if it's already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeExtension);
+} else {
+  initializeExtension();
+} 

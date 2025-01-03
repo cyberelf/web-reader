@@ -1,6 +1,7 @@
 /// <reference types="chrome"/>
 
 import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType } from './config';
+import { Settings as GlobalSettings, getSettings, updateSettings } from './settings';
 
 interface TokenUsage {
   totalTokens: number;
@@ -9,15 +10,6 @@ interface TokenUsage {
 
 interface CustomPrompts {
   [key: string]: string;
-}
-
-interface Settings {
-  openaiApiKey?: string;
-  tokenUsage?: TokenUsage;
-  selectedModel?: ModelType;
-  openaiUrl?: string;
-  showIcon?: boolean;
-  customPrompts?: CustomPrompts;
 }
 
 function initializeSettings(): void {
@@ -39,40 +31,28 @@ function initializeSettings(): void {
   }
 
   // Load saved settings
-  chrome.storage.sync.get(['settings'], (result: { settings?: Settings }) => {
-    const settings = result.settings || {};
-    
+  getSettings().then(settings => {
     // Set API key
     const apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
-    if (apiKeyInput && settings.openaiApiKey) {
-      apiKeyInput.value = settings.openaiApiKey;
+    if (apiKeyInput && settings.apiKey) {
+      apiKeyInput.value = settings.apiKey;
     }
 
     // Set model
-    if (modelSelector && settings.selectedModel) {
-      modelSelector.value = settings.selectedModel;
+    if (modelSelector && settings.model) {
+      modelSelector.value = settings.model;
     }
 
     // Set API URL
     const apiUrlInput = document.getElementById('openai-url') as HTMLInputElement;
-    if (apiUrlInput && settings.openaiUrl) {
-      apiUrlInput.value = settings.openaiUrl;
+    if (apiUrlInput && settings.apiUrl) {
+      apiUrlInput.value = settings.apiUrl;
     }
 
     // Set show icon toggle
     const showIconToggle = document.getElementById('show-icon') as HTMLInputElement;
     if (showIconToggle) {
-      showIconToggle.checked = settings.showIcon !== false;
-    }
-
-    // Load custom prompts
-    if (settings.customPrompts) {
-      loadCustomPrompts(settings.customPrompts);
-    }
-
-    // Update usage stats
-    if (settings.tokenUsage) {
-      updateUsageStats(settings.tokenUsage);
+      showIconToggle.checked = settings.showIcon;
     }
   });
 }
@@ -134,24 +114,24 @@ function updateUsageStats(usage: TokenUsage): void {
 }
 
 function saveSettings(): void {
-  const settings: Settings = {};
+  const settings: Partial<GlobalSettings> = {};
 
   // Get API key
   const apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
   if (apiKeyInput) {
-    settings.openaiApiKey = apiKeyInput.value;
+    settings.apiKey = apiKeyInput.value;
   }
 
   // Get selected model
   const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
   if (modelSelector) {
-    settings.selectedModel = modelSelector.value as ModelType;
+    settings.model = modelSelector.value;
   }
 
   // Get API URL
   const apiUrlInput = document.getElementById('openai-url') as HTMLInputElement;
   if (apiUrlInput) {
-    settings.openaiUrl = apiUrlInput.value;
+    settings.apiUrl = apiUrlInput.value;
   }
 
   // Get show icon setting
@@ -160,19 +140,8 @@ function saveSettings(): void {
     settings.showIcon = showIconToggle.checked;
   }
 
-  // Get custom prompts
-  const customPrompts: CustomPrompts = {};
-  document.querySelectorAll('.custom-prompt-item').forEach(item => {
-    const commandInput = item.querySelector('.prompt-command') as HTMLInputElement;
-    const textInput = item.querySelector('.prompt-text') as HTMLInputElement;
-    if (commandInput && textInput && commandInput.value && textInput.value) {
-      customPrompts[commandInput.value] = textInput.value;
-    }
-  });
-  settings.customPrompts = customPrompts;
-
   // Save settings
-  chrome.storage.sync.set({ settings }, () => {
+  updateSettings(settings).then(() => {
     const saveButton = document.querySelector('.save-button');
     if (saveButton) {
       saveButton.textContent = 'Saved!';

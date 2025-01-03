@@ -126,7 +126,7 @@ export class ShortcutHandler {
     // Handle special commands
     switch (command) {
       case '/clear':
-        document.querySelector('.clear-chat')?.dispatchEvent(new Event('click'));
+        document.querySelector('.ai-clear-chat-history')?.dispatchEvent(new Event('click'));
         this.input.value = '';
         break;
       case '/screenshot':

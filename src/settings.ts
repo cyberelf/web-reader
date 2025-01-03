@@ -12,12 +12,13 @@ interface CustomPrompts {
 }
 
 interface StorageResult {
-  openaiApiKey?: string;
-  tokenUsage?: TokenUsage;
-  selectedModel?: ModelType;
-  openaiUrl?: string;
-  showIcon?: boolean;
-  customPrompts?: CustomPrompts;
+  settings?: {
+    apiKey?: string;
+    apiUrl?: string;
+    model?: string;
+    showIcon?: boolean;
+    shortcuts?: { [key: string]: string };
+  }
 }
 
 export interface Settings {
@@ -45,16 +46,25 @@ const DEFAULT_SETTINGS: Settings = {
 export async function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
-      resolve(result.settings || DEFAULT_SETTINGS);
+      const settings = result.settings || {};
+      resolve({
+        apiKey: settings.apiKey,
+        apiUrl: settings.apiUrl || DEFAULT_SETTINGS.apiUrl,
+        model: settings.model || DEFAULT_MODEL,
+        showIcon: settings.showIcon !== false,
+        shortcuts: DEFAULT_SETTINGS.shortcuts
+      });
     });
   });
 }
 
 export async function updateSettings(settings: Partial<Settings>): Promise<void> {
-  const current = await getSettings();
-  const updated = { ...current, ...settings };
   return new Promise((resolve) => {
-    chrome.storage.sync.set({ settings: updated }, resolve);
+    chrome.storage.sync.get(['settings'], (result) => {
+      const currentSettings = result.settings || {};
+      const updatedSettings = { ...currentSettings, ...settings };
+      chrome.storage.sync.set({ settings: updatedSettings }, resolve);
+    });
   });
 }
 
@@ -98,58 +108,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load saved settings
-  chrome.storage.sync.get(['openaiApiKey', 'tokenUsage', 'selectedModel', 'openaiUrl', 'showIcon'], (result: StorageResult) => {
-    if (result.openaiApiKey) {
-      (document.getElementById('api-key') as HTMLInputElement).value = result.openaiApiKey;
+  getSettings().then(settings => {
+    if (settings.apiKey) {
+      (document.getElementById('api-key') as HTMLInputElement).value = settings.apiKey;
     }
     
-    if (result.selectedModel && modelSelector) {
-      modelSelector.value = result.selectedModel;
+    if (settings.model && modelSelector) {
+      modelSelector.value = settings.model;
     } else if (modelSelector) {
       modelSelector.value = DEFAULT_MODEL;
     }
     
-    if (result.tokenUsage) {
-      updateTokenDisplay(result.tokenUsage);
-    }
-    
-    if (result.openaiUrl) {
-      (document.getElementById('openai-url') as HTMLInputElement).value = result.openaiUrl;
+    if (settings.apiUrl) {
+      (document.getElementById('openai-url') as HTMLInputElement).value = settings.apiUrl;
     }
 
-    if (result.showIcon !== undefined) {
-      (document.getElementById('show-icon') as HTMLInputElement).checked = result.showIcon;
+    if (settings.showIcon !== undefined) {
+      (document.getElementById('show-icon') as HTMLInputElement).checked = settings.showIcon;
     }
   });
 
   // Save settings
-  document.querySelector('.save-button')?.addEventListener('click', () => {
-    const apiKey = (document.getElementById('api-key') as HTMLInputElement).value;
-    const selectedModel = modelSelector?.value as ModelType;
-    const openaiUrl = (document.getElementById('openai-url') as HTMLInputElement).value;
-    const showIcon = (document.getElementById('show-icon') as HTMLInputElement).checked;
+  document.querySelector('.save-button')?.addEventListener('click', async () => {
+    const settings: Partial<Settings> = {
+      apiKey: (document.getElementById('api-key') as HTMLInputElement).value,
+      model: modelSelector?.value,
+      apiUrl: (document.getElementById('openai-url') as HTMLInputElement).value || DEFAULT_SETTINGS.apiUrl,
+      showIcon: (document.getElementById('show-icon') as HTMLInputElement).checked
+    };
     
-    chrome.storage.sync.set({
-      openaiApiKey: apiKey,
-      selectedModel: selectedModel || DEFAULT_MODEL,
-      openaiUrl: openaiUrl || 'https://api.openai.com/v1/',
-      showIcon
-    }, () => {
-      // Show success message
-      const button = document.querySelector('.save-button') as HTMLButtonElement;
-      button.textContent = 'Saved!';
-      button.style.backgroundColor = '#10b981';
-      setTimeout(() => {
-        button.textContent = 'Save Settings';
-        button.style.backgroundColor = '#2962ff';
-      }, 2000);
+    await updateSettings(settings);
 
-      // Send message to content script to update icon visibility
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'updateIconVisibility', showIcon });
-        }
-      });
+    // Show success message
+    const button = document.querySelector('.save-button') as HTMLButtonElement;
+    button.textContent = 'Saved!';
+    button.style.backgroundColor = '#10b981';
+    setTimeout(() => {
+      button.textContent = 'Save Settings';
+      button.style.backgroundColor = '#2962ff';
+    }, 2000);
+
+    // Send message to content script to update icon visibility
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'updateIconVisibility', showIcon: settings.showIcon });
+      }
     });
   });
 }); 

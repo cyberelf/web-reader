@@ -37,7 +37,7 @@ const DEFAULT_ICON_POSITION = {
   right: '20px'
 };
 
-function setupToggleButton(toggleButton: HTMLButtonElement): void {
+export function setupToggleButton(toggleButton: HTMLButtonElement): void {
   const dragState: DragState = {
     isDragging: false,
     hasStartedDrag: false,
@@ -52,12 +52,7 @@ function setupToggleButton(toggleButton: HTMLButtonElement): void {
   toggleButton.style.right = DEFAULT_ICON_POSITION.right;
   toggleButton.style.left = 'auto';
   
-  // Initialize visibility based on storage
-  chrome.storage.sync.get(['showIcon'], (result: StorageResult) => {
-    toggleButton.style.display = result.showIcon !== false ? 'block' : 'none';
-    toggleButton.style.visibility = 'visible';
-  });
-
+  // Initialize drag event listeners
   function onDragStart(e: MouseEvent | TouchEvent): void {
     if (e instanceof MouseEvent) {
       // Only handle left click
@@ -254,87 +249,81 @@ export function createSidebar(): void {
   let sidebar = document.getElementById('page-reader-sidebar');
   let toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
   
-  // If elements already exist, don't create them again
-  if (sidebar && toggleButton) {
-    console.log('Sidebar and toggle button already exist');
-    setupToggleButton(toggleButton);
+  // If sidebar already exists, don't create it again
+  if (sidebar) {
+    console.log('Sidebar already exists');
     return;
   }
 
-  // Create sidebar if it doesn't exist
-  if (!sidebar) {
-    sidebar = document.createElement('div');
-    sidebar.id = 'page-reader-sidebar';
-    
-    sidebar.innerHTML = `
-      <div class="sidebar-container">
-        <div class="sidebar-header">
-          <h2>Page Reader Assistant</h2>
-          <div class="header-controls">
-            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-              <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="5"></circle>
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-              </svg>
-              <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-              </svg>
-            </button>
-            <button class="ai-sidebar-close-button" aria-label="Close sidebar">×</button>
-          </div>
+  // Create sidebar
+  sidebar = document.createElement('div');
+  sidebar.id = 'page-reader-sidebar';
+  
+  sidebar.innerHTML = `
+    <div class="sidebar-container">
+      <div class="sidebar-header">
+        <h2>Page Reader Assistant</h2>
+        <div class="header-controls">
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <button class="ai-sidebar-close-button" aria-label="Close sidebar">×</button>
         </div>
-        <div class="context-controls">
-          <div class="context-header">
-            <div class="context-mode-wrapper">
-              <div class="slider-container">
-                <div class="slider-option" data-mode="page">Full Page</div>
-                <div class="slider-option" data-mode="selection">Selection</div>
-                <div class="slider-option" data-mode="screenshot">Screenshot</div>
-                <div class="slider-highlight"></div>
-              </div>
-            </div>
-            <button id="screenshot-btn" class="hidden" aria-label="Take Screenshot">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
-          <div id="context-area">
-            <div id="content-preview"></div>
-            <div id="drop-zone" class="hidden">
-              <p>Take a screenshot or drag and drop an image here</p>
-              <input type="file" id="file-input" accept="image/*" hidden>
+      </div>
+      <div class="context-controls">
+        <div class="context-header">
+          <div class="context-mode-wrapper">
+            <div class="slider-container">
+              <div class="slider-option" data-mode="page">Full Page</div>
+              <div class="slider-option" data-mode="selection">Selection</div>
+              <div class="slider-option" data-mode="screenshot">Screenshot</div>
+              <div class="slider-highlight"></div>
             </div>
           </div>
+          <button id="screenshot-btn" class="hidden" aria-label="Take Screenshot">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
         </div>
-        <div id="answer">
-          <button class="clear-chat">Clear Chat History</button>
-        </div>
-        <div class="input-section">
-          <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
-          <div class="bottom-controls">
-            <button id="ask-button">Ask Question</button>
-            <select id="model-selector" class="model-selector"></select>
-          </div>
-        </div>
-        <div class="modal" id="clear-confirm-modal">
-          <div class="modal-content">
-            <h3>Clear Chat History</h3>
-            <p>Are you sure you want to clear the chat history for this page?</p>
-            <div class="modal-actions">
-              <button class="modal-button cancel-button">Cancel</button>
-              <button class="modal-button confirm-button">Clear History</button>
-            </div>
+        <div id="context-area">
+          <div id="content-preview"></div>
+          <div id="drop-zone" class="hidden">
+            <p>Take a screenshot or drag and drop an image here</p>
+            <input type="file" id="file-input" accept="image/*" hidden>
           </div>
         </div>
       </div>
-    `;
-    document.body.appendChild(sidebar);
-  }
+      <div id="answer"></div>
+      <div class="input-section">
+        <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
+        <div class="bottom-controls">
+          <button id="ask-button">Ask Question</button>
+          <select id="model-selector" class="model-selector"></select>
+        </div>
+      </div>
+      <div class="modal" id="ai-clear-confirm-modal">
+        <div class="modal-content">
+          <h3>Clear Chat History</h3>
+          <p>Are you sure you want to clear the chat history for this page?</p>
+          <div class="modal-actions">
+            <button class="modal-button cancel-button">Cancel</button>
+            <button class="modal-button confirm-button">Clear History</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(sidebar);
 
-  // Get toggle button if it exists
-  toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
+  // Setup toggle button if it exists
   if (toggleButton) {
     setupToggleButton(toggleButton);
   }
@@ -356,8 +345,8 @@ function setupEventListeners(): void {
   const sidebar = document.getElementById('page-reader-sidebar');
   const themeToggle = document.getElementById('theme-toggle');
   const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
-  const modal = document.getElementById('clear-confirm-modal');
-  const clearButton = document.querySelector('.clear-chat');
+  const modal = document.getElementById('ai-clear-confirm-modal');
+  const clearButton = document.querySelector('.ai-clear-chat-history');
   const askButton = document.getElementById('ask-button');
   const questionInput = document.getElementById('question') as HTMLTextAreaElement;
   const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
