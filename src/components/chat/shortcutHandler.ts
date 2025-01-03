@@ -31,8 +31,21 @@ export class ShortcutHandler {
     const lastWord = text.split(' ').pop() || '';
 
     if (lastWord.startsWith('/')) {
-      const settings = await getSettings();
-      this.matches = Object.entries(settings.shortcuts)
+      // Get both default shortcuts and custom prompts
+      const [settings, { customPrompts = {} }] = await Promise.all([
+        getSettings(),
+        new Promise<{ customPrompts?: Record<string, string> }>(resolve => {
+          chrome.storage.sync.get(['customPrompts'], resolve);
+        })
+      ]);
+
+      // Combine default shortcuts and custom prompts
+      const allShortcuts = {
+        ...settings.shortcuts,
+        ...customPrompts
+      };
+
+      this.matches = Object.entries(allShortcuts)
         .filter(([command]) => command.startsWith(lastWord))
         .map(([command, description]) => ({ command, description }));
 

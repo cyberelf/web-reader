@@ -32,7 +32,7 @@ interface OpenAIRequest {
 export async function handleQuestion(question: string, context: string, model?: ModelType): Promise<void> {
   try {
     // Check if the question is a shortcut
-    const shortcutPrompt = handleShortcut(question);
+    const shortcutPrompt = await handleShortcut(question);
     const finalQuestion = shortcutPrompt || question;
 
     const settings = await getSettings();

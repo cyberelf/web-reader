@@ -17,7 +17,10 @@ async function loadCustomPrompts() {
   return PROMPT_SHORTCUTS;
 }
 
-function handleShortcut(input: string) {
+async function handleShortcut(input: string) {
+  // Load custom prompts first
+  await loadCustomPrompts();
+
   const command = Object.keys(PROMPT_SHORTCUTS).find(cmd => 
     input.trim().toLowerCase().startsWith(cmd.toLowerCase())
   );

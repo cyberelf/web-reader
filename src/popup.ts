@@ -140,21 +140,45 @@ function saveSettings(): void {
     settings.showIcon = showIconToggle.checked;
   }
 
-  // Save settings
-  updateSettings(settings).then(() => {
-    const saveButton = document.querySelector('.save-button');
-    if (saveButton) {
-      saveButton.textContent = 'Saved!';
-      setTimeout(() => {
-        saveButton.textContent = 'Save Settings';
-      }, 2000);
+  // Get custom prompts
+  const customPrompts: { [key: string]: string } = {};
+  const promptItems = document.querySelectorAll('.custom-prompt-item');
+  promptItems.forEach(item => {
+    const commandInput = item.querySelector('.prompt-command') as HTMLInputElement;
+    const textInput = item.querySelector('.prompt-text') as HTMLInputElement;
+    if (commandInput && textInput && commandInput.value && textInput.value) {
+      customPrompts[commandInput.value] = textInput.value;
     }
+  });
+
+  // Save settings and custom prompts
+  updateSettings(settings).then(() => {
+    chrome.storage.sync.set({ customPrompts }, () => {
+      const saveButton = document.querySelector('.save-button');
+      if (saveButton) {
+        saveButton.textContent = 'Saved!';
+        setTimeout(() => {
+          saveButton.textContent = 'Save Settings';
+        }, 2000);
+      }
+    });
   });
 }
 
 // Initialize settings when popup opens
 document.addEventListener('DOMContentLoaded', () => {
   initializeSettings();
+
+  // Load custom prompts
+  chrome.storage.sync.get(['customPrompts'], (result: { customPrompts?: Record<string, string> }) => {
+    const customPrompts = result.customPrompts || {};
+    const container = document.querySelector('.custom-prompts-container');
+    if (container) {
+      Object.entries(customPrompts).forEach(([command, text]) => {
+        container.appendChild(createPromptItem(command, text));
+      });
+    }
+  });
 
   // Add event listeners
   const addPromptButton = document.querySelector('.ai-add-prompt');
