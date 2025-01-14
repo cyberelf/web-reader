@@ -54,6 +54,18 @@ function isYouTubePage(): boolean {
   return window.location.hostname === 'www.youtube.com' && window.location.pathname.includes('/watch');
 }
 
+function downloadText(text: string, filename: string): void {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 async function fetchYouTubeSubtitles(): Promise<void> {
   if (!isYouTubePage()) return;
 
@@ -63,15 +75,34 @@ async function fetchYouTubeSubtitles(): Promise<void> {
     const player = document.querySelector('.html5-video-player');
     const subtitleButton = document.querySelector('.ytp-subtitles-button') as HTMLButtonElement;
     const video = document.querySelector('video');
+    const contentPreview = document.getElementById('content-preview');
     
-    if (!player || !subtitleButton || !video) {
+    if (!player || !subtitleButton || !video || !contentPreview) {
       console.error('Missing elements:', {
         player: !!player,
         subtitleButton: !!subtitleButton,
-        video: !!video
+        video: !!video,
+        contentPreview: !!contentPreview
       });
       youtubeSubtitles = 'YouTube player elements not found';
       return;
+    }
+
+    // Add download button if not exists
+    let downloadButton = contentPreview.querySelector('.download-subtitles') as HTMLButtonElement;
+    if (!downloadButton) {
+      downloadButton = document.createElement('button');
+      downloadButton.className = 'download-subtitles';
+      downloadButton.textContent = '⬇️ Download Subtitles';
+      downloadButton.style.display = 'none';
+      contentPreview.insertBefore(downloadButton, contentPreview.firstChild);
+      
+      downloadButton.addEventListener('click', () => {
+        if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
+          const videoTitle = document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent?.trim() || 'youtube_subtitles';
+          downloadText(youtubeSubtitles, `${videoTitle}.txt`);
+        }
+      });
     }
 
     console.log('Found video player elements, subtitle button state:', subtitleButton.getAttribute('aria-pressed'));
@@ -166,6 +197,13 @@ async function fetchYouTubeSubtitles(): Promise<void> {
     } catch (error) {
       console.error('Failed to parse subtitles JSON:', error);
       youtubeSubtitles = 'Failed to parse subtitles';
+    }
+
+    // After successfully getting subtitles, show the download button
+    if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
+      downloadButton.style.display = 'block';
+    } else {
+      downloadButton.style.display = 'none';
     }
 
   } catch (error) {

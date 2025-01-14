@@ -798,4 +798,23 @@
 .ai-clear-chat-history:hover {
   background-color: #dc2626;
   transform: translateY(-1px);
+}
+
+.download-subtitles {
+  display: none;
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  background: var(--button-bg, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.download-subtitles:hover {
+  background: var(--button-hover-bg, #2563eb);
 } 
