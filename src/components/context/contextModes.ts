@@ -75,37 +75,16 @@ async function fetchYouTubeSubtitles(): Promise<void> {
     const player = document.querySelector('.html5-video-player');
     const subtitleButton = document.querySelector('.ytp-subtitles-button') as HTMLButtonElement;
     const video = document.querySelector('video');
-    const contentPreview = document.getElementById('content-preview');
     
-    if (!player || !subtitleButton || !video || !contentPreview) {
+    if (!player || !subtitleButton || !video) {
       console.error('Missing elements:', {
         player: !!player,
         subtitleButton: !!subtitleButton,
-        video: !!video,
-        contentPreview: !!contentPreview
+        video: !!video
       });
       youtubeSubtitles = 'YouTube player elements not found';
       return;
     }
-
-    // Add download button if not exists
-    let downloadButton = contentPreview.querySelector('.download-subtitles') as HTMLButtonElement;
-    if (!downloadButton) {
-      downloadButton = document.createElement('button');
-      downloadButton.className = 'download-subtitles';
-      downloadButton.textContent = '⬇️ Download Subtitles';
-      downloadButton.style.display = 'none';
-      contentPreview.insertBefore(downloadButton, contentPreview.firstChild);
-      
-      downloadButton.addEventListener('click', () => {
-        if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
-          const videoTitle = document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent?.trim() || 'youtube_subtitles';
-          downloadText(youtubeSubtitles, `${videoTitle}.txt`);
-        }
-      });
-    }
-
-    console.log('Found video player elements, subtitle button state:', subtitleButton.getAttribute('aria-pressed'));
 
     // Create a promise to capture the subtitle request
     const subtitleRequestPromise = new Promise<string>((resolve, reject) => {
@@ -199,13 +178,6 @@ async function fetchYouTubeSubtitles(): Promise<void> {
       youtubeSubtitles = 'Failed to parse subtitles';
     }
 
-    // After successfully getting subtitles, show the download button
-    if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
-      downloadButton.style.display = 'block';
-    } else {
-      downloadButton.style.display = 'none';
-    }
-
   } catch (error) {
     console.error('Failed to fetch YouTube subtitles:', error);
     youtubeSubtitles = 'Failed to load subtitles';
@@ -227,6 +199,81 @@ function setupEventListeners(contentPreview: HTMLElement): void {
         : 'No text selected. Select some text on the page to analyze it.';
     }
   });
+}
+
+function createDownloadButton(preview: HTMLElement): HTMLButtonElement {
+  let downloadButton = preview.querySelector('.download-subtitles') as HTMLButtonElement;
+  if (!downloadButton) {
+    downloadButton = document.createElement('button');
+    downloadButton.className = 'download-subtitles';
+    downloadButton.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>`;
+    downloadButton.title = 'Download Subtitles';
+    
+    downloadButton.addEventListener('click', () => {
+      if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
+        const videoTitle = document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent?.trim() || 'youtube_subtitles';
+        downloadText(youtubeSubtitles, `${videoTitle}.txt`);
+      }
+    });
+  }
+  return downloadButton;
+}
+
+async function updateYouTubeUI(preview: HTMLElement): Promise<void> {
+  const downloadButton = createDownloadButton(preview);
+
+  if (!isYouTubePage()) {
+    preview.textContent = 'This mode only works on YouTube video pages';
+    downloadButton.style.display = 'none';
+    return;
+  }
+
+  if (!youtubeSubtitles) {
+    preview.textContent = 'Loading YouTube subtitles...';
+    downloadButton.style.display = 'none';
+    await fetchYouTubeSubtitles();
+  }
+
+  if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found' && youtubeSubtitles !== 'Failed to load subtitles') {
+    preview.innerHTML = `<div class="subtitles-preview">${youtubeSubtitles.substring(0, 200)}...</div>`;
+    preview.appendChild(downloadButton);
+    downloadButton.style.display = 'flex';
+  } else {
+    preview.textContent = youtubeSubtitles || 'No subtitles available';
+    downloadButton.style.display = 'none';
+  }
+}
+
+async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZone: HTMLElement, preview: HTMLElement): Promise<void> {
+  screenshotBtn.classList.toggle('hidden', mode !== 'screenshot');
+  dropZone.classList.toggle('hidden', mode !== 'screenshot');
+  
+  if (mode === 'screenshot') {
+    if (!currentScreenshot) {
+      preview.innerHTML = '';
+      dropZone.innerHTML = '<p>Take a screenshot or drag and drop an image here</p>';
+      preview.appendChild(dropZone);
+    } else {
+      displayImage(currentScreenshot, preview);
+    }
+  } else if (mode === 'page') {
+    const pageContent = document.body.innerText.trim();
+    preview.textContent = pageContent.length > 50 
+      ? pageContent.substring(0, 50) + '... (Full page will be analyzed)'
+      : pageContent;
+  } else if (mode === 'selection') {
+    preview.textContent = lastSelection
+      ? lastSelection.length > 50 
+        ? lastSelection.substring(0, 50) + '...'
+        : lastSelection
+      : 'No text selected. Select some text on the page to analyze it.';
+  } else if (mode === 'youtube') {
+    await updateYouTubeUI(preview);
+  }
 }
 
 export function setupContextModes(): void {
@@ -252,44 +299,6 @@ export function setupContextModes(): void {
 
     function updateHighlight(index: number, highlight: Element): void {
       highlight.setAttribute('style', `transform: translateX(${index * 100}%)`);
-    }
-
-    async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZone: HTMLElement, preview: HTMLElement): Promise<void> {
-      screenshotBtn.classList.toggle('hidden', mode !== 'screenshot');
-      dropZone.classList.toggle('hidden', mode !== 'screenshot');
-      
-      if (mode === 'screenshot') {
-        if (!currentScreenshot) {
-          preview.innerHTML = '';
-          dropZone.innerHTML = '<p>Take a screenshot or drag and drop an image here</p>';
-          preview.appendChild(dropZone);
-        } else {
-          displayImage(currentScreenshot, preview);
-        }
-      } else if (mode === 'page') {
-        const pageContent = document.body.innerText.trim();
-        preview.textContent = pageContent.length > 50 
-          ? pageContent.substring(0, 50) + '... (Full page will be analyzed)'
-          : pageContent;
-      } else if (mode === 'selection') {
-        preview.textContent = lastSelection
-          ? lastSelection.length > 50 
-            ? lastSelection.substring(0, 50) + '...'
-            : lastSelection
-          : 'No text selected. Select some text on the page to analyze it.';
-      } else if (mode === 'youtube') {
-        if (!isYouTubePage()) {
-          preview.textContent = 'This mode only works on YouTube video pages';
-        } else {
-          preview.textContent = 'Loading YouTube subtitles...';
-          await fetchYouTubeSubtitles();
-          preview.textContent = youtubeSubtitles
-            ? youtubeSubtitles.length > 50
-              ? youtubeSubtitles.substring(0, 50) + '...'
-              : youtubeSubtitles
-            : 'No subtitles available for this video';
-        }
-      }
     }
 
     // Set up mode switching

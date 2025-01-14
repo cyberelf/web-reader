@@ -155,6 +155,7 @@
 }
 
 #content-preview {
+  position: relative;
   min-height: 100px;
   padding: 10px;
   border: 1px solid #ddd;
@@ -801,20 +802,62 @@
 }
 
 .download-subtitles {
-  display: none;
-  padding: 8px 16px;
-  margin-bottom: 12px;
-  background: var(--button-bg, #3b82f6);
-  color: white;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px;
+  background: transparent;
   border: none;
-  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
+  color: var(--text, #1e293b);
+  opacity: 0.7;
   transition: all 0.2s ease;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
 }
 
 .download-subtitles:hover {
-  background: var(--button-hover-bg, #2563eb);
+  opacity: 1;
+  background: var(--hover, rgba(0, 0, 0, 0.05));
+}
+
+[data-theme="dark"] .download-subtitles {
+  color: var(--text, #e2e8f0);
+}
+
+[data-theme="dark"] .download-subtitles:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.1));
+}
+
+#content-preview {
+  position: relative;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.subtitles-preview {
+  margin-top: 4px;
+  padding: 12px;
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--text, #1e293b);
+}
+
+[data-theme="dark"] .subtitles-preview {
+  background: var(--bg-secondary, #1e293b);
+  border-color: var(--border, #334155);
+  color: var(--text, #e2e8f0);
 } 
