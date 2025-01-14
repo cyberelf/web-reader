@@ -283,6 +283,7 @@ export function createSidebar(): void {
               <div class="slider-option" data-mode="page">Full Page</div>
               <div class="slider-option" data-mode="selection">Selection</div>
               <div class="slider-option" data-mode="screenshot">Screenshot</div>
+              <div class="slider-option" data-mode="youtube">YouTube</div>
               <div class="slider-highlight"></div>
             </div>
           </div>

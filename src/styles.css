@@ -123,7 +123,7 @@
   position: absolute;
   top: 4px;
   left: 4px;
-  width: calc(33.33% - 2px);
+  width: calc(25% - 2px);
   height: calc(100% - 8px);
   background: var(--bg, white);
   border-radius: 2px;

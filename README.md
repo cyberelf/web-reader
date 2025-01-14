@@ -9,6 +9,7 @@ A Chrome extension that allows you to ask questions about web page content, imag
 - 🤖 Ask questions about any webpage content
 - 📸 Take screenshots and ask questions about them
 - 🖼️ Drag and drop images for visual analysis
+- 🎥 Extract and analyze YouTube video subtitles
 - 💬 Chat-like interface with message history
 - 🌓 Light/Dark theme support
 - ⌨️ Keyboard shortcuts (Enter to send, Shift+Enter for new line)
@@ -40,6 +41,7 @@ A Chrome extension that allows you to ask questions about web page content, imag
    - Full Page: Ask about the entire page content
    - Selection: Ask about selected text
    - Screenshot/Image: Take a screenshot or drop an image to analyze
+   - YouTube: Extract and analyze video subtitles (on YouTube pages)
 3. Type your question and press Enter or click "Ask Question"
 4. View the AI's response in real-time
 
@@ -52,11 +54,12 @@ The extension is built with TypeScript for enhanced type safety and better devel
 ├── src/                    # TypeScript source files
 │   ├── components/         # UI and feature components
 │   │   ├── chat/          # Chat-related components
-│   │   ├── context/       # Context handling
+│   │   ├── context/       # Context handling (page, selection, screenshot, youtube)
 │   │   └── ui/            # UI components
 │   ├── utils/             # Utility functions
 │   ├── types/             # TypeScript type definitions
-│   ├── background.ts      # Service worker
+│   │   └── index.d.ts     # Global type definitions
+│   ├── background.ts      # Service worker and request handling
 │   ├── config.ts          # Configuration
 │   ├── main.ts           # Content script entry
 │   └── settings.ts        # Settings page logic
@@ -130,6 +133,7 @@ For issues, questions, or suggestions:
 - [ ] Context-aware prompts based on page content
 - [ ] Multi-language support
 - [ ] Integration with other AI providers
+- [x] YouTube subtitle support for video content analysis
 - [ ] Browser extension sync across devices
 - [ ] Advanced screenshot tools (annotations, region selection)
 - [ ] Voice input/output support

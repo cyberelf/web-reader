@@ -1,29 +1,41 @@
 {
   "manifest_version": 3,
-  "name": "Web Reader",
-  "version": "1.0",
-  "description": "AI-powered web page reader and analyzer",
+  "name": "Page Reader Assistant",
+  "version": "1.0.0",
+  "description": "A Chrome extension that helps you read and analyze web pages",
   "permissions": [
     "activeTab",
-    "storage",
     "scripting",
-    "tabs"
+    "storage",
+    "declarativeNetRequest",
+    "tabs",
+    "webRequest"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "*://*.youtube.com/*",
+    "*://*.googlevideo.com/*"
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["content.js", "styles.css"],
+    "matches": ["<all_urls>"]
+  }],
   "action": {
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
-    },
-    "default_title": "Web Reader",
-    "default_popup": "popup.html"
+    }
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -31,13 +43,6 @@
     "128": "icons/icon128.png"
   },
   "commands": {
-    "_execute_action": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+K",
-        "mac": "Command+Shift+K"
-      },
-      "description": "Open Web Reader"
-    },
     "toggle_sidebar": {
       "suggested_key": {
         "default": "Alt+Shift+K",
@@ -45,18 +50,5 @@
       },
       "description": "Toggle Web Reader sidebar"
     }
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["content.js", "styles.css"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 } 

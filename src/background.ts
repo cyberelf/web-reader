@@ -1,6 +1,14 @@
 /// <reference types="chrome"/>
 
-import type { MessageRequest, FetchImageResponse } from './types';
+interface MessageRequest {
+  action: string;
+  url?: string;
+}
+
+interface FetchImageResponse {
+  data?: string;
+  error?: string;
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   // Set default settings
