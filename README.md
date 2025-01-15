@@ -20,19 +20,12 @@ A Chrome extension that allows you to ask questions about web page content, imag
 
 ## Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Build the extension:
-   ```bash
-   npm run build
-   ```
-4. Open Chrome and go to `chrome://extensions/`
-5. Enable "Developer mode" in the top right
-6. Click "Load unpacked" and select the extension directory
-7. Click the extension icon and set your OpenAI API key in the settings
+1. Download the latest release package (`web-reader.zip`) from the [Releases](https://github.com/cyberelf/web-reader/releases) page
+2. Extract the zip file to a local directory
+3. Open Chrome and go to `chrome://extensions/`
+4. Enable "Developer mode" in the top right
+5. Click "Load unpacked" and select the extracted directory
+6. Click the extension icon and set your OpenAI API key in the settings
 
 ## Usage
 
@@ -46,6 +39,20 @@ A Chrome extension that allows you to ask questions about web page content, imag
 4. View the AI's response in real-time
 
 ## Development
+
+### Setup
+1. Clone this repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the extension:
+   ```bash
+   npm run build
+   ```
+4. Open Chrome and go to `chrome://extensions/`
+5. Enable "Developer mode" in the top right
+6. Click "Load unpacked" and select the `dist` directory
 
 The extension is built with TypeScript for enhanced type safety and better development experience.
 
