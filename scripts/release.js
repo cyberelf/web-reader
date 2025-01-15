@@ -28,19 +28,37 @@ try {
   // Update package.json version
   const packageJsonPath = path.join(__dirname, '..', 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  packageJson.version = releaseId;
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  
+  // Skip if version is already set
+  if (packageJson.version === releaseId) {
+    console.log(`Version ${releaseId} is already set in package.json`);
+  } else {
+    packageJson.version = releaseId;
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  }
 
   // Update manifest.json version
   const manifestPath = path.join(__dirname, '..', 'src', 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  manifest.version = releaseId;
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  
+  // Skip if version is already set
+  if (manifest.version === releaseId) {
+    console.log(`Version ${releaseId} is already set in manifest.json`);
+  } else {
+    manifest.version = releaseId;
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  }
 
-  // Git operations
-  console.log('Committing version updates...');
-  execSync('git add .');
-  execSync(`git commit -m "chore: bump version to ${releaseId}"`);
+  // Check if there are any changes to commit
+  const status = execSync('git status --porcelain').toString();
+  if (!status) {
+    console.log('No changes to commit');
+  } else {
+    // Git operations
+    console.log('Committing version updates...');
+    execSync('git add .');
+    execSync(`git commit -m "chore: bump version to ${releaseId}"`);
+  }
 
   // Check if tag exists
   const tagExists = execSync(`git tag -l v${releaseId}`).toString().trim() !== '';
