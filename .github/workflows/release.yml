@@ -14,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for tags
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -33,13 +35,54 @@ jobs:
           zip -r ../web-reader.zip ./*
           cd ..
 
-      - name: Create Release
+      - name: Get Tag Message
+        id: tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "tag_message=$(git tag -l --format='%(contents)' $TAG_NAME)" >> $GITHUB_OUTPUT
+
+      - name: Generate Release Notes
+        uses: softprops/action-gh-release@v2
+        id: release_notes
+        with:
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Release Notes
+        id: notes
+        uses: actions/github-script@v6
+        env:
+          RELEASE_ID: ${{ steps.release_notes.outputs.id }}
+        with:
+          script: |
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.RELEASE_ID
+            });
+            await github.rest.repos.deleteRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.RELEASE_ID
+            });
+            return release.data.body;
+          result-encoding: string
+
+      - name: Create Final Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             web-reader.zip
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body: |
+            ${{ steps.tag.outputs.tag_message }}
+
+            ## Full Changelog
+            ${{ steps.notes.outputs.result }}
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
