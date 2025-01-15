@@ -4,6 +4,7 @@ import { addMessage, updateLastMessage } from './chatHistory';
 import { getSettings } from '../../settings';
 import type { ModelType } from '../../config';
 import { handleShortcut } from './promptShortcuts';
+import { resizeImage } from '../../utils/imageUtils';
 
 interface OpenAIResponse {
   choices: Array<{
@@ -83,6 +84,9 @@ export async function handleQuestion(question: string, context: string, model?: 
     
     // Add system message
     if (context.startsWith('data:image')) {
+      // Resize image if needed
+      const resizedImage = await resizeImage(context);
+      
       messages.push({
         role: 'system',
         content: 'You are analyzing the provided image. Be specific and detailed in your observations.'
@@ -94,7 +98,7 @@ export async function handleQuestion(question: string, context: string, model?: 
           {
             type: 'image_url',
             image_url: {
-              url: context
+              url: resizedImage
             }
           },
           {
