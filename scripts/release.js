@@ -39,7 +39,7 @@ try {
 
   // Git operations
   console.log('Committing version updates...');
-  execSync('git add package.json src/manifest.json');
+  execSync('git add .');
   execSync(`git commit -m "chore: bump version to ${releaseId}"`);
 
   // Check if tag exists
