@@ -1,7 +1,7 @@
 /// <reference types="chrome"/>
 
 import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType } from './config';
-import { Settings as GlobalSettings, getSettings, updateSettings } from './settings';
+import { Settings as GlobalSettings, getSettings, updateSettings, clearTokenUsage } from './settings';
 
 interface TokenUsage {
   totalTokens: number;
@@ -10,6 +10,15 @@ interface TokenUsage {
 
 interface CustomPrompts {
   [key: string]: string;
+}
+
+// Load token usage from storage
+async function loadTokenUsage(): Promise<TokenUsage> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['tokenUsage'], (result) => {
+      resolve(result.tokenUsage || { totalTokens: 0, requestCount: 0 });
+    });
+  });
 }
 
 function initializeSettings(): void {
@@ -55,6 +64,9 @@ function initializeSettings(): void {
       showIconToggle.checked = settings.showIcon;
     }
   });
+
+  // Load token usage
+  loadTokenUsage().then(updateUsageStats);
 }
 
 function loadCustomPrompts(prompts: CustomPrompts): void {
@@ -168,6 +180,15 @@ function saveSettings(): void {
 // Initialize settings when popup opens
 document.addEventListener('DOMContentLoaded', () => {
   initializeSettings();
+
+  // Add event listener for clear usage button
+  const clearUsageButton = document.getElementById('clear-usage');
+  if (clearUsageButton) {
+    clearUsageButton.addEventListener('click', async () => {
+      await clearTokenUsage();
+      updateUsageStats({ totalTokens: 0, requestCount: 0 });
+    });
+  }
 
   // Load custom prompts
   chrome.storage.sync.get(['customPrompts'], (result: { customPrompts?: Record<string, string> }) => {

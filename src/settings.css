@@ -188,7 +188,9 @@ label {
 /* Save button */
 .save-button {
   width: 100%;
+  height: 32px;
   margin-top: 12px;
+  border-radius: 6px;
 }
 
 /* Token usage section */

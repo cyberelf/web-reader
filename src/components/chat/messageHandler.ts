@@ -14,6 +14,11 @@ interface OpenAIResponse {
       content?: string;
     };
   }>;
+  usage?: {
+    total_tokens: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
   error?: {
     message: string;
   };
@@ -27,6 +32,27 @@ interface OpenAIRequest {
   }>;
   stream: boolean;
   max_tokens?: number;
+}
+
+interface TokenUsage {
+  totalTokens: number;
+  requestCount: number;
+}
+
+async function updateTokenUsage(newTokens: number): Promise<void> {
+  const result = await new Promise<{ tokenUsage?: TokenUsage }>((resolve) => {
+    chrome.storage.local.get(['tokenUsage'], resolve);
+  });
+  
+  const currentUsage = result.tokenUsage || { totalTokens: 0, requestCount: 0 };
+  const updatedUsage = {
+    totalTokens: currentUsage.totalTokens + newTokens,
+    requestCount: currentUsage.requestCount + 1
+  };
+  
+  await new Promise<void>((resolve) => {
+    chrome.storage.local.set({ tokenUsage: updatedUsage }, resolve);
+  });
 }
 
 export async function handleQuestion(question: string, context: string, model?: ModelType): Promise<void> {
@@ -50,6 +76,32 @@ export async function handleQuestion(question: string, context: string, model?: 
     const selectedModel = model || settings.model;
     await addMessage('assistant', '', selectedModel);
 
+    // First make a non-streaming request to get token usage
+    const nonStreamingResponse = await fetch(`${settings.apiUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: finalQuestion }
+        ],
+        stream: false
+      } as OpenAIRequest)
+    });
+
+    if (!nonStreamingResponse.ok) {
+      const data = await nonStreamingResponse.json();
+      throw new Error(data.error?.message || 'Failed to get response from OpenAI');
+    }
+
+    const nonStreamingData = await nonStreamingResponse.json();
+    const totalTokens = nonStreamingData.usage?.total_tokens || 0;
+
+    // Now make the streaming request for the actual response
     const response = await fetch(`${settings.apiUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -100,15 +152,17 @@ export async function handleQuestion(question: string, context: string, model?: 
           }
         }
       }
+
+      // Update token usage after successful completion
+      await updateTokenUsage(totalTokens);
     } catch (error) {
       console.error('Error reading stream:', error);
       throw error;
     } finally {
       reader.releaseLock();
     }
-
   } catch (error) {
-    console.error('Error handling question:', error);
-    await addMessage('assistant', `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`, model || (await getSettings()).model);
+    console.error('Error in handleQuestion:', error);
+    throw error;
   }
 } 

@@ -74,6 +74,12 @@ export async function clearApiKey(): Promise<void> {
   return updateSettings(settings);
 }
 
+export async function clearTokenUsage(): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ tokenUsage: { totalTokens: 0, requestCount: 0 } }, resolve);
+  });
+}
+
 function updateTokenDisplay(usage: TokenUsage): void {
   const totalTokensEl = document.getElementById('total-tokens');
   const requestCountEl = document.getElementById('request-count');
