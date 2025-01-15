@@ -39,8 +39,16 @@ jobs:
         id: tag
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Fetch the tag to ensure we have its data
+          git fetch --tags --force
+          # Get the tag message using git show
+          TAG_MSG=$(git tag -l --format='%(contents)' "$TAG_NAME")
+          # Properly escape the message for GitHub Actions
+          TAG_MSG="${TAG_MSG//'%'/'%25'}"
+          TAG_MSG="${TAG_MSG//$'\n'/'%0A'}"
+          TAG_MSG="${TAG_MSG//$'\r'/'%0D'}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "tag_message=$(git tag -l --format='%(contents)' $TAG_NAME)" >> $GITHUB_OUTPUT
+          echo "tag_message=$TAG_MSG" >> $GITHUB_OUTPUT
 
       - name: Generate Release Notes
         uses: softprops/action-gh-release@v2
