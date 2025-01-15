@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Page Reader Assistant",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "A Chrome extension that helps you read and analyze web pages",
   "permissions": [
     "activeTab",
@@ -19,15 +19,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "css": ["styles.css"],
-      "js": ["content.js"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "js": [
+        "content.js"
+      ]
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["content.js", "styles.css"],
-    "matches": ["<all_urls>"]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.js",
+        "styles.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -50,4 +63,4 @@
       "description": "Toggle Web Reader sidebar"
     }
   }
-} 
+}
