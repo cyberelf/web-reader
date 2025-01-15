@@ -28,7 +28,13 @@ interface OpenAIRequest {
   model: string;
   messages: Array<{
     role: 'user' | 'system' | 'assistant';
-    content: string;
+    content: string | Array<{
+      type: 'text' | 'image_url';
+      text?: string;
+      image_url?: {
+        url: string;
+      };
+    }>;
   }>;
   stream: boolean;
   max_tokens?: number;
@@ -68,13 +74,46 @@ export async function handleQuestion(question: string, context: string, model?: 
 
     await addMessage('user', finalQuestion);
 
-    const systemMessage = context ? 
-      `You are analyzing the following content:\n\n${context}` :
-      'You are analyzing the current webpage.';
-
     // Create placeholder message for streaming
     const selectedModel = model || settings.model;
     await addMessage('assistant', '', selectedModel);
+
+    // Prepare messages based on whether we have an image or text
+    const messages = [];
+    
+    // Add system message
+    if (context.startsWith('data:image')) {
+      messages.push({
+        role: 'system',
+        content: 'You are analyzing the provided image. Be specific and detailed in your observations.'
+      });
+      // Add user message with image
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: {
+              url: context
+            }
+          },
+          {
+            type: 'text',
+            text: finalQuestion
+          }
+        ]
+      });
+    } else {
+      messages.push({
+        role: 'system',
+        content: context ? `You are analyzing the following content:\n\n${context}` : 'You are analyzing the current webpage.'
+      });
+      // Add user message with text
+      messages.push({
+        role: 'user',
+        content: finalQuestion
+      });
+    }
 
     // First make a non-streaming request to get token usage
     const nonStreamingResponse = await fetch(`${settings.apiUrl}/chat/completions`, {
@@ -85,10 +124,7 @@ export async function handleQuestion(question: string, context: string, model?: 
       },
       body: JSON.stringify({
         model: selectedModel,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: finalQuestion }
-        ],
+        messages,
         stream: false
       } as OpenAIRequest)
     });
@@ -110,10 +146,7 @@ export async function handleQuestion(question: string, context: string, model?: 
       },
       body: JSON.stringify({
         model: selectedModel,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: finalQuestion }
-        ],
+        messages,
         stream: true
       } as OpenAIRequest)
     });
