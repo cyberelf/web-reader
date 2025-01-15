@@ -40,10 +40,15 @@ export async function loadChatHistory(): Promise<void> {
     // Clear existing content
     answerDiv.innerHTML = '';
     
+    // Create messages container
+    const messagesContainer = document.createElement('div');
+    messagesContainer.className = 'ai-chat-messages';
+    answerDiv.appendChild(messagesContainer);
+    
     // Add messages
     currentHistory.messages.forEach(message => {
       const messageDiv = createMessageElement(message);
-      answerDiv.appendChild(messageDiv);
+      messagesContainer.appendChild(messageDiv);
     });
 
     // Add clear button only if there are messages
@@ -63,7 +68,7 @@ export async function loadChatHistory(): Promise<void> {
     }
     
     // Scroll to bottom
-    answerDiv.scrollTop = answerDiv.scrollHeight;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
     // Return a promise that resolves after DOM updates
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -96,8 +101,15 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
     
     const answerDiv = document.getElementById('answer');
     if (answerDiv) {
+      let messagesContainer = answerDiv.querySelector('.ai-chat-messages');
+      if (!messagesContainer) {
+        messagesContainer = document.createElement('div');
+        messagesContainer.className = 'ai-chat-messages';
+        answerDiv.appendChild(messagesContainer);
+      }
+
       const messageDiv = createMessageElement(message);
-      answerDiv.appendChild(messageDiv);
+      messagesContainer.appendChild(messageDiv);
 
       // Add clear button if this is the first message
       if (currentHistory.messages.length === 1) {
@@ -115,40 +127,10 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
         });
       }
 
-      answerDiv.scrollTop = answerDiv.scrollHeight;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   } catch (error) {
     console.error('Failed to save message:', error);
-  }
-}
-
-export async function clearChatHistory(): Promise<void> {
-  try {
-    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
-      chrome.storage.local.get(['chatHistories'], resolve);
-    });
-    
-    const histories = result.chatHistories || {};
-    delete histories[window.location.href];
-    
-    await new Promise<void>((resolve) => {
-      chrome.storage.local.set({ chatHistories: histories }, resolve);
-    });
-    
-    currentHistory = { messages: [], url: window.location.href };
-    
-    // Clear messages from the UI
-    const answerDiv = document.getElementById('answer');
-    if (answerDiv) {
-      // Keep the clear chat button and remove all messages
-      const clearButton = answerDiv.querySelector('.ai-clear-chat-history');
-      answerDiv.innerHTML = '';
-      if (clearButton) {
-        answerDiv.appendChild(clearButton);
-      }
-    }
-  } catch (error) {
-    console.error('Failed to clear chat history:', error);
   }
 }
 
@@ -174,13 +156,38 @@ export async function updateLastMessage(content: string): Promise<void> {
     
     const answerDiv = document.getElementById('answer');
     if (answerDiv) {
-      const lastMessageDiv = answerDiv.querySelector('.ai-assistant-message:last-of-type .ai-message-content');
+      const lastMessageDiv = answerDiv.querySelector('.ai-chat-messages .ai-assistant-message:last-of-type .ai-message-content');
       if (lastMessageDiv) {
         lastMessageDiv.innerHTML = renderMarkdown(content);
       }
     }
   } catch (error) {
     console.error('Failed to update message:', error);
+  }
+}
+
+export async function clearChatHistory(): Promise<void> {
+  try {
+    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
+      chrome.storage.local.get(['chatHistories'], resolve);
+    });
+    
+    const histories = result.chatHistories || {};
+    delete histories[window.location.href];
+    
+    await new Promise<void>((resolve) => {
+      chrome.storage.local.set({ chatHistories: histories }, resolve);
+    });
+    
+    currentHistory = { messages: [], url: window.location.href };
+    
+    // Clear messages from the UI
+    const answerDiv = document.getElementById('answer');
+    if (answerDiv) {
+      answerDiv.innerHTML = '';
+    }
+  } catch (error) {
+    console.error('Failed to clear chat history:', error);
   }
 }
 

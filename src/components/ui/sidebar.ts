@@ -37,6 +37,9 @@ const DEFAULT_ICON_POSITION = {
   right: '20px'
 };
 
+// Add isProcessing state
+let isProcessing = false;
+
 export function setupToggleButton(toggleButton: HTMLButtonElement): void {
   const dragState: DragState = {
     isDragging: false,
@@ -120,8 +123,22 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
     // Clear the press timer
     window.clearTimeout(dragState.pressTimer);
 
-    // Handle click/tap to toggle sidebar if we weren't dragging
-    if (!dragState.isDragging) {
+    // If we were dragging, finish the drag
+    if (dragState.isDragging) {
+      dragState.isDragging = false;
+      dragState.hasStartedDrag = false;
+      toggleButton.classList.remove('dragging');
+      
+      const rect = toggleButton.getBoundingClientRect();
+      // move into the window viewport if it's not already there
+      if (rect.left < 0) {
+        toggleButton.style.left = '0px';
+      } else if (rect.right > window.innerWidth) {
+        toggleButton.style.right = (window.innerWidth - rect.right) + 'px';
+      }
+      toggleButton.style.top = rect.top + 'px';
+    } else if (!dragState.hasStartedDrag) {
+      // Handle click/tap to toggle sidebar if we weren't dragging
       if (e instanceof MouseEvent && e.button === 0) {
         // Toggle sidebar on left click release if no drag occurred
         const sidebar = document.getElementById('page-reader-sidebar');
@@ -152,18 +169,6 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
 
     dragState.pressTimer = undefined;
     dragState.pressStartTime = undefined;
-
-    // If we were dragging, finish the drag
-    if (dragState.isDragging) {
-      dragState.isDragging = false;
-      dragState.hasStartedDrag = false;
-      toggleButton.classList.remove('dragging');
-      
-      const rect = toggleButton.getBoundingClientRect();
-      toggleButton.style.left = 'auto';
-      toggleButton.style.right = (window.innerWidth - rect.right) + 'px';
-      toggleButton.style.top = rect.top + 'px';
-    }
   }
 
   function onDragMove(e: MouseEvent | TouchEvent): void {
@@ -348,7 +353,7 @@ function setupEventListeners(): void {
   const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
   const modal = document.getElementById('ai-clear-confirm-modal');
   const clearButton = document.querySelector('.ai-clear-chat-history');
-  const askButton = document.getElementById('ask-button');
+  const askButton = document.getElementById('ask-button') as HTMLButtonElement;
   const questionInput = document.getElementById('question') as HTMLTextAreaElement;
   const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
   
@@ -400,21 +405,33 @@ function setupEventListeners(): void {
 
   // Ask button
   askButton?.addEventListener('click', async () => {
-    if (questionInput && questionInput.value.trim()) {
-      const content = getPageContent();
-      const question = questionInput.value.trim();
-      const selectedModel = modelSelector?.value as ModelType;
+    if (questionInput && questionInput.value.trim() && !isProcessing) {
+      isProcessing = true;
+      askButton.disabled = true;
+      askButton.style.opacity = '0.7';
+      askButton.style.cursor = 'not-allowed';
       
-      // Send question to API
-      await handleQuestion(question, content, selectedModel);
-      
-      questionInput.value = '';
+      try {
+        const content = getPageContent();
+        const question = questionInput.value.trim();
+        const selectedModel = modelSelector?.value as ModelType;
+        
+        // Send question to API
+        await handleQuestion(question, content, selectedModel);
+        
+        questionInput.value = '';
+      } finally {
+        isProcessing = false;
+        askButton.disabled = false;
+        askButton.style.opacity = '';
+        askButton.style.cursor = '';
+      }
     }
   });
 
   // Question input enter key
   questionInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isProcessing) {
       e.preventDefault();
       askButton?.click();
     }

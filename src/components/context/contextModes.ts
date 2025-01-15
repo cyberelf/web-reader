@@ -6,6 +6,7 @@ let currentMode: ContextMode = 'page';
 let currentScreenshot: string | null = null;
 let lastSelection: string = '';
 let youtubeSubtitles: string = '';
+let contentPreviewElement: HTMLElement | null = null;
 
 interface SubtitleSegment {
   utf8: string;
@@ -184,21 +185,57 @@ async function fetchYouTubeSubtitles(): Promise<void> {
   }
 }
 
+function clearPreview(): void {
+  if (contentPreviewElement) {
+    contentPreviewElement.textContent = 'No text selected. Select some text on the page to analyze it.';
+  }
+  lastSelection = '';
+}
+
+function updatePreview(text: string): void {
+  if (contentPreviewElement) {
+    lastSelection = text;
+    contentPreviewElement.textContent = text.length > 50 
+      ? text.substring(0, 50) + '...'
+      : text;
+  }
+}
+
+function handleSelectionChange(): void {
+  if (currentMode !== 'selection') return;
+
+  const selection = window.getSelection();
+  if (!selection) {
+    clearPreview();
+    return;
+  }
+
+  // Ignore selections within the sidebar
+  const sidebar = document.getElementById('page-reader-sidebar');
+  if (sidebar?.contains(selection.anchorNode)) {
+    return;
+  }
+
+  // Only clear if the selection is actually empty
+  if (selection.isCollapsed && !lastSelection) {
+    clearPreview();
+    return;
+  }
+
+  // Get the selected text
+  const selectedText = selection.toString().trim();
+  
+  // Only update if there's actual text selected or if we're clearing an existing selection
+  if (selectedText) {
+    updatePreview(selectedText);
+  } else if (!selectedText && lastSelection) {
+    clearPreview();
+  }
+}
+
 function setupEventListeners(contentPreview: HTMLElement): void {
-  // Set up selection change handler
-  document.addEventListener('selectionchange', () => {
-    if (currentMode === 'selection') {
-      const selection = window.getSelection()?.toString().trim() || '';
-      if (selection) {
-        lastSelection = selection;
-      }
-      contentPreview.textContent = lastSelection
-        ? lastSelection.length > 50 
-          ? lastSelection.substring(0, 50) + '...'
-          : lastSelection
-        : 'No text selected. Select some text on the page to analyze it.';
-    }
-  });
+  contentPreviewElement = contentPreview;
+  document.addEventListener('selectionchange', handleSelectionChange);
 }
 
 function createDownloadButton(preview: HTMLElement): HTMLButtonElement {
