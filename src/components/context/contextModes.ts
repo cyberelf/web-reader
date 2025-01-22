@@ -211,7 +211,7 @@ function handleSelectionChange(): void {
   }
 
   // Ignore selections within the sidebar
-  const sidebar = document.getElementById('page-reader-sidebar');
+  const sidebar = document.getElementById('ai-page-reader-sidebar');
   if (sidebar?.contains(selection.anchorNode)) {
     return;
   }
@@ -314,83 +314,80 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
 }
 
 export function setupContextModes(): void {
-  // Wait for a small delay to ensure elements are ready
-  setTimeout(() => {
-    const sliderContainer = document.querySelector('.slider-container');
-    const sliderHighlight = document.querySelector('.slider-highlight');
-    const screenshotBtn = document.getElementById('screenshot-btn');
-    const dropZone = document.getElementById('drop-zone');
-    const contentPreview = document.getElementById('content-preview');
-    const fileInput = document.getElementById('file-input') as HTMLInputElement;
-    const toggleButton = document.getElementById('page-reader-toggle');
-    const sidebar = document.getElementById('page-reader-sidebar');
+  const sliderContainer = document.querySelector('.ai-slider-container');
+  const sliderHighlight = document.querySelector('.ai-slider-highlight');
+  const dropZone = document.getElementById('ai-drop-zone');
+  const contentPreview = document.getElementById('ai-content-preview');
+  const screenshotBtn = document.getElementById('ai-screenshot-btn');
+  const fileInput = document.getElementById('ai-file-input') as HTMLInputElement;
+  const toggleButton = document.getElementById('ai-page-reader-toggle');
+  const sidebar = document.getElementById('ai-page-reader-sidebar');
 
-    if (!sliderContainer || !sliderHighlight || !screenshotBtn || !dropZone || !contentPreview || !fileInput) {
-      console.error('Required elements not found, retrying in 100ms');
-      setupContextModes(); // Retry setup
-      return;
-    }
+  if (!sliderContainer || !sliderHighlight || !dropZone || !contentPreview || !screenshotBtn || !fileInput) {
+    console.error('Required elements not found, retrying in 100ms');
+    setupContextModes(); // Retry setup
+    return;
+  }
 
-    // Set up event listeners
-    setupEventListeners(contentPreview);
+  // Set up event listeners
+  setupEventListeners(contentPreview);
 
-    function updateHighlight(index: number, highlight: Element): void {
-      highlight.setAttribute('style', `transform: translateX(${index * 100}%)`);
-    }
+  function updateHighlight(index: number, highlight: Element): void {
+    highlight.setAttribute('style', `transform: translateX(${index * 100}%)`);
+  }
 
-    // Set up mode switching
-    const options = sliderContainer.querySelectorAll('.slider-option');
-    options.forEach((option, index) => {
-      option.addEventListener('click', () => {
-        const mode = option.getAttribute('data-mode') as ContextMode;
-        if (!mode) return;
+  // Set up mode switching
+  const options = sliderContainer.querySelectorAll('.ai-slider-option');
+  options.forEach((option, index) => {
+    option.addEventListener('click', () => {
+      const mode = option.getAttribute('data-mode') as ContextMode;
+      if (!mode) return;
 
-        currentMode = mode;
-        if (mode !== 'screenshot') {
-          currentScreenshot = null;
-        }
-        updateHighlight(index, sliderHighlight);
-        updateModeUI(mode, screenshotBtn, dropZone, contentPreview).catch(error => {
-          console.error('Failed to update mode UI:', error);
-          contentPreview.textContent = 'Failed to update content';
-        });
+      currentMode = mode;
+      if (mode !== 'screenshot') {
+        currentScreenshot = null;
+      }
+      updateHighlight(index, sliderHighlight);
+      updateModeUI(mode, screenshotBtn, dropZone, contentPreview).catch(error => {
+        console.error('Failed to update mode UI:', error);
+        contentPreview.textContent = 'Failed to update content';
       });
     });
+  });
 
-    // Initialize with page content
-    updateModeUI('page', screenshotBtn, dropZone, contentPreview);
+  // Initialize with page content
+  updateModeUI('page', screenshotBtn, dropZone, contentPreview);
 
-    // Set up screenshot button
-    screenshotBtn.addEventListener('click', async () => {
-      try {
-        // Hide UI elements before taking screenshot
-        if (toggleButton) toggleButton.style.visibility = 'hidden';
-        if (sidebar) sidebar.style.visibility = 'hidden';
+  // Set up screenshot button
+  screenshotBtn.addEventListener('click', async () => {
+    try {
+      // Hide UI elements before taking screenshot
+      if (toggleButton) toggleButton.style.visibility = 'hidden';
+      if (sidebar) sidebar.style.visibility = 'hidden';
 
-        // Wait a bit for UI to hide
-        await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait a bit for UI to hide
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-        const response = await chrome.runtime.sendMessage({ action: 'takeScreenshot' });
-        
-        // Show UI elements again
-        if (toggleButton) toggleButton.style.visibility = 'visible';
-        if (sidebar) sidebar.style.visibility = 'visible';
+      const response = await chrome.runtime.sendMessage({ action: 'takeScreenshot' });
+      
+      // Show UI elements again
+      if (toggleButton) toggleButton.style.visibility = 'visible';
+      if (sidebar) sidebar.style.visibility = 'visible';
 
-        if (response) {
-          currentScreenshot = response;
-          displayImage(response, contentPreview);
-        }
-      } catch (error) {
-        console.error('Failed to take screenshot:', error);
-        // Ensure UI is visible even if screenshot fails
-        if (toggleButton) toggleButton.style.visibility = 'visible';
-        if (sidebar) sidebar.style.visibility = 'visible';
+      if (response) {
+        currentScreenshot = response;
+        displayImage(response, contentPreview);
       }
-    });
+    } catch (error) {
+      console.error('Failed to take screenshot:', error);
+      // Ensure UI is visible even if screenshot fails
+      if (toggleButton) toggleButton.style.visibility = 'visible';
+      if (sidebar) sidebar.style.visibility = 'visible';
+    }
+  });
 
-    // Set up drag and drop for images
-    setupImageDrop(dropZone, contentPreview);
-  }, 50); // Small delay to ensure DOM is ready
+  // Set up drag and drop for images
+  setupImageDrop(dropZone, contentPreview);
 }
 
 function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {

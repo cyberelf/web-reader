@@ -24,7 +24,7 @@ let currentHistory: ChatHistory = {
 };
 
 export async function loadChatHistory(): Promise<void> {
-  const answerDiv = document.getElementById('answer');
+  const answerDiv = document.getElementById('ai-answer');
   if (!answerDiv) return;
 
   try {
@@ -99,7 +99,7 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
       chrome.storage.local.set({ chatHistories: histories }, resolve);
     });
     
-    const answerDiv = document.getElementById('answer');
+    const answerDiv = document.getElementById('ai-answer');
     if (answerDiv) {
       let messagesContainer = answerDiv.querySelector('.ai-chat-messages');
       if (!messagesContainer) {
@@ -154,7 +154,7 @@ export async function updateLastMessage(content: string): Promise<void> {
       chrome.storage.local.set({ chatHistories: histories }, resolve);
     });
     
-    const answerDiv = document.getElementById('answer');
+    const answerDiv = document.getElementById('ai-answer');
     if (answerDiv) {
       const lastMessageDiv = answerDiv.querySelector('.ai-chat-messages .ai-assistant-message:last-of-type .ai-message-content');
       if (lastMessageDiv) {
@@ -182,7 +182,7 @@ export async function clearChatHistory(): Promise<void> {
     currentHistory = { messages: [], url: window.location.href };
     
     // Clear messages from the UI
-    const answerDiv = document.getElementById('answer');
+    const answerDiv = document.getElementById('ai-answer');
     if (answerDiv) {
       answerDiv.innerHTML = '';
     }

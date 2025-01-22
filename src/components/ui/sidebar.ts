@@ -91,7 +91,7 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
 
     dragState.isDragging = true;
     dragState.hasStartedDrag = true;
-    toggleButton.classList.add('dragging');
+    toggleButton.classList.add('ai-dragging');
     
     const rect = toggleButton.getBoundingClientRect();
     dragState.currentPosition = {
@@ -127,7 +127,7 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
     if (dragState.isDragging) {
       dragState.isDragging = false;
       dragState.hasStartedDrag = false;
-      toggleButton.classList.remove('dragging');
+      toggleButton.classList.remove('ai-dragging');
       
       const rect = toggleButton.getBoundingClientRect();
       // move into the window viewport if it's not already there
@@ -141,12 +141,12 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
       // Handle click/tap to toggle sidebar if we weren't dragging
       if (e instanceof MouseEvent && e.button === 0) {
         // Toggle sidebar on left click release if no drag occurred
-        const sidebar = document.getElementById('page-reader-sidebar');
+        const sidebar = document.getElementById('ai-page-reader-sidebar');
         if (sidebar) {
-          if (sidebar.classList.contains('open')) {
-            sidebar.classList.remove('open');
+          if (sidebar.classList.contains('ai-open')) {
+            sidebar.classList.remove('ai-open');
           } else {
-            sidebar.classList.add('open');
+            sidebar.classList.add('ai-open');
           }
         }
       } else if (!(e instanceof MouseEvent)) {
@@ -155,12 +155,12 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
         const pressDuration = pressEndTime - (dragState.pressStartTime || 0);
         
         if (pressDuration < 200) {
-          const sidebar = document.getElementById('page-reader-sidebar');
+          const sidebar = document.getElementById('ai-page-reader-sidebar');
           if (sidebar) {
-            if (sidebar.classList.contains('open')) {
-              sidebar.classList.remove('open');
+            if (sidebar.classList.contains('ai-open')) {
+              sidebar.classList.remove('ai-open');
             } else {
-              sidebar.classList.add('open');
+              sidebar.classList.add('ai-open');
             }
           }
         }
@@ -239,7 +239,7 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
     if (dragState.isDragging) {
       dragState.isDragging = false;
       dragState.hasStartedDrag = false;
-      toggleButton.classList.remove('dragging');
+      toggleButton.classList.remove('ai-dragging');
     }
   });
 
@@ -251,8 +251,8 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
 
 export function createSidebar(): void {
   // Check if elements already exist
-  let sidebar = document.getElementById('page-reader-sidebar');
-  let toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
+  let sidebar = document.getElementById('ai-page-reader-sidebar');
+  let toggleButton = document.getElementById('ai-page-reader-toggle') as HTMLButtonElement | null;
   
   // If sidebar already exists, don't create it again
   if (sidebar) {
@@ -262,14 +262,14 @@ export function createSidebar(): void {
 
   // Create sidebar
   sidebar = document.createElement('div');
-  sidebar.id = 'page-reader-sidebar';
+  sidebar.id = 'ai-page-reader-sidebar';
   
   sidebar.innerHTML = `
-    <div class="sidebar-container">
-      <div class="sidebar-header">
+    <div class="ai-sidebar-container">
+      <div class="ai-sidebar-header">
         <h2>Page Reader Assistant</h2>
-        <div class="header-controls">
-          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+        <div class="ai-header-controls">
+          <button id="ai-theme-toggle" class="ai-theme-toggle" aria-label="Toggle theme">
             <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="5"></circle>
               <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
@@ -286,47 +286,47 @@ export function createSidebar(): void {
           </button>
         </div>
       </div>
-      <div class="context-controls">
-        <div class="context-header">
-          <div class="context-mode-wrapper">
-            <div class="slider-container">
-              <div class="slider-option" data-mode="page">Full Page</div>
-              <div class="slider-option" data-mode="selection">Selection</div>
-              <div class="slider-option" data-mode="screenshot">Screenshot</div>
-              <div class="slider-option" data-mode="youtube">YouTube</div>
-              <div class="slider-highlight"></div>
+      <div class="ai-context-controls">
+        <div class="ai-context-header">
+          <div class="ai-context-mode-wrapper">
+            <div class="ai-slider-container">
+              <div class="ai-slider-option" data-mode="page">Full Page</div>
+              <div class="ai-slider-option" data-mode="selection">Selection</div>
+              <div class="ai-slider-option" data-mode="screenshot">Screenshot</div>
+              <div class="ai-slider-option" data-mode="youtube">YouTube</div>
+              <div class="ai-slider-highlight"></div>
             </div>
           </div>
-          <button id="screenshot-btn" class="hidden" aria-label="Take Screenshot">
+          <button id="ai-screenshot-btn" class="ai-hidden" aria-label="Take Screenshot">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
         </div>
-        <div id="context-area">
-          <div id="content-preview"></div>
-          <div id="drop-zone" class="hidden">
+        <div id="ai-context-area">
+          <div id="ai-content-preview"></div>
+          <div id="ai-drop-zone" class="ai-hidden">
             <p>Take a screenshot or drag and drop an image here</p>
-            <input type="file" id="file-input" accept="image/*" hidden>
+            <input type="file" id="ai-file-input" accept="image/*" hidden>
           </div>
         </div>
       </div>
-      <div id="answer"></div>
-      <div class="input-section">
-        <textarea id="question" placeholder="What would you like to know about this page?" rows="4"></textarea>
-        <div class="bottom-controls">
-          <button id="ask-button">Ask Question</button>
-          <select id="model-selector" class="model-selector"></select>
+      <div id="ai-answer"></div>
+      <div class="ai-input-section">
+        <textarea id="ai-question" placeholder="What would you like to know about this page?" rows="4"></textarea>
+        <div class="ai-bottom-controls">
+          <button id="ai-ask-button">Ask Question</button>
+          <select id="ai-model-selector" class="ai-model-selector"></select>
         </div>
       </div>
-      <div class="modal" id="ai-clear-confirm-modal">
-        <div class="modal-content">
+      <div class="ai-modal" id="ai-clear-confirm-modal">
+        <div class="ai-modal-content">
           <h3>Clear Chat History</h3>
           <p>Are you sure you want to clear the chat history for this page?</p>
-          <div class="modal-actions">
-            <button class="modal-button cancel-button">Cancel</button>
-            <button class="modal-button confirm-button">Clear History</button>
+          <div class="ai-modal-actions">
+            <button class="ai-modal-button ai-cancel-button">Cancel</button>
+            <button class="ai-modal-button ai-confirm-button">Clear History</button>
           </div>
         </div>
       </div>
@@ -346,21 +346,21 @@ export function createSidebar(): void {
   setupEventListeners();
 
   // Add custom-scrollbar class to elements
-  const contentPreview = document.getElementById('content-preview');
-  const answer = document.getElementById('answer');
-  contentPreview?.classList.add('custom-scrollbar');
-  answer?.classList.add('custom-scrollbar');
+  const contentPreview = document.getElementById('ai-content-preview');
+  const answer = document.getElementById('ai-answer');
+  contentPreview?.classList.add('ai-custom-scrollbar');
+  answer?.classList.add('ai-custom-scrollbar');
 }
 
 function setupEventListeners(): void {
-  const sidebar = document.getElementById('page-reader-sidebar');
-  const themeToggle = document.getElementById('theme-toggle');
-  const closeButton = document.querySelector('#page-reader-sidebar .sidebar-header .ai-sidebar-close-button');
+  const sidebar = document.getElementById('ai-page-reader-sidebar');
+  const themeToggle = document.getElementById('ai-theme-toggle');
+  const closeButton = document.querySelector('#ai-page-reader-sidebar .ai-sidebar-header .ai-sidebar-close-button');
   const modal = document.getElementById('ai-clear-confirm-modal');
   const clearButton = document.querySelector('.ai-clear-chat-history');
-  const askButton = document.getElementById('ask-button') as HTMLButtonElement;
-  const questionInput = document.getElementById('question') as HTMLTextAreaElement;
-  const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
+  const askButton = document.getElementById('ai-ask-button') as HTMLButtonElement;
+  const questionInput = document.getElementById('ai-question') as HTMLTextAreaElement;
+  const modelSelector = document.getElementById('ai-model-selector') as HTMLSelectElement;
   
   // Initialize shortcut handler
   if (questionInput) {
@@ -416,7 +416,7 @@ function setupEventListeners(): void {
 
   // Close button
   closeButton?.addEventListener('click', () => {
-    sidebar?.classList.remove('open');
+    sidebar?.classList.remove('ai-open');
   });
 
   // Ask button
@@ -454,9 +454,9 @@ function setupEventListeners(): void {
   });
 
   // Clear chat confirmation modal
-  const confirmButton = modal?.querySelector('.confirm-button');
-  const cancelButton = modal?.querySelector('.cancel-button');
-  const answerContainer = document.getElementById('answer');
+  const confirmButton = modal?.querySelector('.ai-confirm-button');
+  const cancelButton = modal?.querySelector('.ai-cancel-button');
+  const answerContainer = document.getElementById('ai-answer');
 
   clearButton?.addEventListener('click', () => {
     modal?.classList.add('show');

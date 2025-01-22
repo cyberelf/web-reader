@@ -9,7 +9,7 @@ interface StorageResult {
 }
 
 export function setupShortcutAutocomplete(): void {
-  const textarea = document.getElementById('question') as HTMLTextAreaElement;
+  const textarea = document.getElementById('ai-question') as HTMLTextAreaElement;
   if (!textarea) return;
 
   textarea.addEventListener('input', () => {

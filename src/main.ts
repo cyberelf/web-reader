@@ -9,7 +9,7 @@ import { loadCustomPrompts } from './components/chat/promptShortcuts';
 // Add message listener for icon visibility updates
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'updateIconVisibility') {
-    const toggleButton = document.getElementById('page-reader-toggle');
+    const toggleButton = document.getElementById('ai-page-reader-toggle');
     if (toggleButton) {
       toggleButton.style.display = message.showIcon ? 'block' : 'none';
       chrome.storage.sync.get(['settings'], (result) => {
@@ -24,12 +24,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function initializeExtension() {
   try {
     // Check if button already exists
-    let toggleButton = document.getElementById('page-reader-toggle') as HTMLButtonElement | null;
+    let toggleButton = document.getElementById('ai-page-reader-toggle') as HTMLButtonElement | null;
     
     // Create toggle button if it doesn't exist
     if (!toggleButton) {
       toggleButton = document.createElement('button');
-      toggleButton.id = 'page-reader-toggle';
+      toggleButton.id = 'ai-page-reader-toggle';
       toggleButton.textContent = 'Ask AI';
       toggleButton.style.visibility = 'hidden'; // Hide initially
       document.body.appendChild(toggleButton);
@@ -58,8 +58,8 @@ async function initializeExtension() {
     let attempts = 0;
     
     function trySetupContextModes() {
-      const sidebar = document.getElementById('page-reader-sidebar');
-      const contentPreview = document.getElementById('content-preview');
+      const sidebar = document.getElementById('ai-page-reader-sidebar');
+      const contentPreview = document.getElementById('ai-content-preview');
       
       if (sidebar && contentPreview) {
         setupContextModes();
