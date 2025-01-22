@@ -73,7 +73,6 @@
 .ai-sidebar-close-button {
   background: none;
   border: none;
-  font-size: 24px;
   cursor: pointer;
   padding: 4px;
   color: #666;
@@ -82,6 +81,15 @@
   justify-content: center;
   width: 32px;
   height: 32px;
+}
+
+.ai-sidebar-close-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+[data-theme="dark"] .ai-sidebar-close-button {
+  color: #fff;
 }
 
 .context-controls {
