@@ -105,7 +105,7 @@
 }
 
 .ai-context-mode-wrapper {
-  width: 300px;
+  width: 320px;
 }
 
 .ai-slider-container {
@@ -114,13 +114,13 @@
   border-radius: 6px;
   padding: 3px;
   position: relative;
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 
 .ai-slider-option {
   flex: 1;
   text-align: center;
-  padding: 4px 8px;
+  padding: 8px 8px;
   font-size: 12px;
   cursor: pointer;
   position: relative;
@@ -219,7 +219,7 @@
   color: var(--text, #e2e8f0);
 }
 
-.ai-hidden {
+#ai-drop-zone.hidden {
   display: none !important;
 }
 
@@ -302,7 +302,7 @@
 
 .ai-modal {
   display: none;
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -311,18 +311,20 @@
   z-index: 10001;
 }
 
-.ai-modal.ai-show {
+.ai-modal.show {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .ai-modal-content {
-  background: white;
+  background: var(--bg, white);
   padding: 20px;
   border-radius: 4px;
-  max-width: 400px;
-  width: 100%;
+  max-width: 300px;
+  width: calc(100% - 40px);
+  margin: 0 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .ai-modal-actions {
@@ -333,20 +335,45 @@
 }
 
 .ai-modal-button {
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.cancel-button {
-  background: none;
-  border: 1px solid #ddd;
+.ai-cancel-button {
+  background: var(--bg, #ffffff);
+  color: var(--text, #1e293b);
+  border: 1px solid var(--border, #e2e8f0);
 }
 
-.confirm-button {
-  background: #e74c3c;
+.ai-cancel-button:hover {
+  background: var(--hover, #f8fafc);
+  border-color: var(--button-bg, #3b82f6);
+}
+
+.ai-confirm-button {
+  background: var(--button-bg, #ef4444);
   color: white;
   border: none;
+}
+
+.ai-confirm-button:hover {
+  background: var(--button-hover-bg, #dc2626);
+}
+
+[data-theme="dark"] .ai-cancel-button {
+  background: var(--bg, #1e293b);
+  border-color: var(--border, #4d4d4d);
+  color: var(--text, #e2e8f0);
+}
+
+[data-theme="dark"] .ai-cancel-button:hover {
+  background: var(--hover, #334155);
+  border-color: var(--button-bg, #3b82f6);
 }
 
 .ai-theme-toggle {
@@ -417,15 +444,6 @@
 
 [data-theme="dark"] .ai-modal-content {
   background: #2d2d2d;
-}
-
-[data-theme="dark"] .ai-cancel-button {
-  border-color: #4d4d4d;
-  color: #fff;
-}
-
-[data-theme="dark"] .ai-theme-toggle {
-  color: #fff;
 }
 
 .image-preview {
@@ -760,7 +778,7 @@
   color: var(--light-text, #94a3b8);
 }
 
-#screenshot-btn {
+#ai-screenshot-btn {
   padding: 6px;
   background: var(--bg, #ffffff);
   color: var(--text, #1e293b);
@@ -777,17 +795,17 @@
   box-sizing: border-box;
 }
 
-#screenshot-btn:hover {
+#ai-screenshot-btn:hover {
   background: var(--hover, #f8fafc);
   border-color: var(--button-bg, #3b82f6);
 }
 
-#screenshot-btn svg {
+#ai-screenshot-btn svg {
   width: 16px;
   height: 16px;
 }
 
-#screenshot-btn.hidden {
+#ai-screenshot-btn.hidden {
   display: none;
 }
 

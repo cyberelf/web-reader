@@ -36,16 +36,16 @@ describe('Context Modes', () => {
         <div class="slider-option" data-mode="screenshot">Screenshot</div>
         <div class="slider-highlight"></div>
       </div>
-      <button id="screenshot-btn">Take Screenshot</button>
-      <div id="drop-zone">Drop zone</div>
-      <div id="content-preview"></div>
-      <input type="file" id="file-input" />
+      <button id="ai-screenshot-btn">Take Screenshot</button>
+      <div id="ai-drop-zone">Drop zone</div>
+      <div id="ai-content-preview"></div>
+      <input type="file" id="ai-file-input" />
     `;
     document.body.appendChild(container);
 
     // Get elements
-    contentPreview = document.getElementById('content-preview') as HTMLDivElement;
-    screenshotBtn = document.getElementById('screenshot-btn') as HTMLButtonElement;
+    contentPreview = document.getElementById('ai-content-preview') as HTMLDivElement;
+    screenshotBtn = document.getElementById('ai-screenshot-btn') as HTMLButtonElement;
     options = document.querySelectorAll('.slider-option');
     highlight = document.querySelector('.slider-highlight') as HTMLElement;
 

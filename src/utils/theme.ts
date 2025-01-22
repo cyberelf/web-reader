@@ -16,4 +16,11 @@ export function applyTheme(theme: Theme): void {
     themeToggle.classList.remove('light', 'dark');
     themeToggle.classList.add(theme);
   }
+
+  // Update modal theme
+  const modal = document.getElementById('ai-modal');
+  if (modal) {
+    modal.classList.remove('light', 'dark');
+    modal.classList.add(theme);
+  }
 } 

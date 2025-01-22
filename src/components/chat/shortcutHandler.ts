@@ -143,7 +143,7 @@ export class ShortcutHandler {
         this.input.value = '';
         break;
       case '/screenshot':
-        document.getElementById('screenshot-btn')?.click();
+        document.getElementById('ai-screenshot-btn')?.click();
         this.input.value = '';
         break;
       // Add more command handlers as needed
