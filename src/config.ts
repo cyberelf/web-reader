@@ -5,9 +5,11 @@ export const MODELS = {
   VISION: 'gpt-4-vision-preview'
 } as const;
 
-export type ModelType = typeof MODELS[keyof typeof MODELS];
+export type ModelType = typeof MODELS[keyof typeof MODELS] | string;
 
-export const MODEL_DISPLAY_NAMES: Record<ModelType, string> = {
+export type ModelDisplayType = typeof MODELS[keyof typeof MODELS];
+
+export const MODEL_DISPLAY_NAMES: Record<ModelDisplayType, string> = {
   'gpt-4o': 'GPT-4O',
   'gpt-4o-mini': 'GPT-4O Mini',
   'deepseek-chat': 'DeepSeek Chat',

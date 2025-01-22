@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
 
-import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType } from './config';
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType, ModelDisplayType } from './config';
 import { Settings as GlobalSettings, getSettings, updateSettings, clearTokenUsage } from './settings';
 
 interface TokenUsage {
@@ -24,23 +24,73 @@ async function loadTokenUsage(): Promise<TokenUsage> {
 function initializeSettings(): void {
   // Initialize model selector
   const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
+  const customModelInput = document.getElementById('custom-model') as HTMLInputElement;
+  const addCustomModelButton = document.getElementById('add-custom-model') as HTMLButtonElement;
+
   if (modelSelector) {
     // Clear existing options
     modelSelector.innerHTML = '';
     
     // Add model options
-    Object.entries(MODELS)
-      .filter(([key]) => key !== 'VISION')
-      .forEach(([key, value]) => {
+    Object.entries(MODELS).forEach(([key, value]) => {
+      // Include all models except VISION
+      if (key !== 'VISION') {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
+        const displayName = MODEL_DISPLAY_NAMES[value as ModelDisplayType];
+        option.textContent = displayName || value;
+        modelSelector.appendChild(option);
+      }
+    });
+
+    // Load custom models from storage
+    chrome.storage.sync.get(['customModels'], (result: { customModels?: string[] }) => {
+      const customModels = result.customModels || [];
+      customModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
         modelSelector.appendChild(option);
       });
+    });
+
+    // Add event listener for custom model input
+    const addCustomModel = async () => {
+      const newModel = customModelInput.value.trim();
+      if (newModel) {
+        // Add to storage
+        const result = await chrome.storage.sync.get(['customModels']);
+        const customModels = result.customModels || [];
+        if (!customModels.includes(newModel)) {
+          customModels.push(newModel);
+          await chrome.storage.sync.set({ customModels });
+          
+          // Add to dropdown
+          const option = document.createElement('option');
+          option.value = newModel;
+          option.textContent = newModel;
+          modelSelector.appendChild(option);
+          
+          // Select the new model
+          modelSelector.value = newModel;
+          customModelInput.value = '';
+          saveSettings();
+        }
+      }
+    };
+
+    // Add event listeners for adding custom models
+    addCustomModelButton?.addEventListener('click', addCustomModel);
+    customModelInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustomModel();
+      }
+    });
   }
 
   // Load saved settings
-  getSettings().then(settings => {
+  getSettings().then((settings: GlobalSettings) => {
     // Set API key
     const apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
     if (apiKeyInput && settings.apiKey) {
@@ -48,7 +98,7 @@ function initializeSettings(): void {
     }
 
     // Set model
-    if (modelSelector && settings.model) {
+    if (settings.model) {
       modelSelector.value = settings.model;
     }
 
@@ -127,59 +177,70 @@ function updateUsageStats(usage: TokenUsage): void {
 
 function saveSettings(): void {
   const settings: Partial<GlobalSettings> = {};
-
-  // Get API key
+  
   const apiKeyInput = document.getElementById('api-key') as HTMLInputElement;
-  if (apiKeyInput) {
-    settings.apiKey = apiKeyInput.value;
-  }
-
-  // Get selected model
+  const apiUrlInput = document.getElementById('openai-url') as HTMLInputElement;
   const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
-  if (modelSelector) {
+  const customModelInput = document.getElementById('custom-model') as HTMLInputElement;
+  const showIconCheckbox = document.getElementById('show-icon') as HTMLInputElement;
+
+  if (apiKeyInput?.value) settings.apiKey = apiKeyInput.value;
+  if (apiUrlInput?.value) settings.apiUrl = apiUrlInput.value;
+  if (modelSelector?.value) {
     settings.model = modelSelector.value;
   }
+  if (showIconCheckbox) settings.showIcon = showIconCheckbox.checked;
 
-  // Get API URL
-  const apiUrlInput = document.getElementById('openai-url') as HTMLInputElement;
-  if (apiUrlInput) {
-    settings.apiUrl = apiUrlInput.value;
-  }
-
-  // Get show icon setting
-  const showIconToggle = document.getElementById('show-icon') as HTMLInputElement;
-  if (showIconToggle) {
-    settings.showIcon = showIconToggle.checked;
-  }
-
-  // Get custom prompts
-  const customPrompts: { [key: string]: string } = {};
-  const promptItems = document.querySelectorAll('.custom-prompt-item');
-  promptItems.forEach(item => {
-    const commandInput = item.querySelector('.prompt-command') as HTMLInputElement;
-    const textInput = item.querySelector('.prompt-text') as HTMLInputElement;
-    if (commandInput && textInput && commandInput.value && textInput.value) {
-      customPrompts[commandInput.value] = textInput.value;
-    }
-  });
-
-  // Save settings and custom prompts
-  updateSettings(settings).then(() => {
-    chrome.storage.sync.set({ customPrompts }, () => {
-      const saveButton = document.querySelector('.save-button');
-      if (saveButton) {
-        saveButton.textContent = 'Saved!';
-        setTimeout(() => {
-          saveButton.textContent = 'Save Settings';
-        }, 2000);
-      }
-    });
-  });
+  updateSettings(settings);
 }
 
 // Initialize settings when popup opens
 document.addEventListener('DOMContentLoaded', () => {
   initializeSettings();
+
+  // Setup tab switching
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  // Function to switch tabs
+  const switchTab = (tabName: string) => {
+    // Hide all panes first
+    tabPanes.forEach(pane => {
+      (pane as HTMLElement).style.display = 'none';
+      pane.classList.remove('active');
+    });
+
+    // Deactivate all buttons
+    tabButtons.forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    // Activate selected tab and pane
+    const selectedButton = Array.from(tabButtons).find(btn => btn.getAttribute('data-tab') === tabName);
+    const selectedPane = document.getElementById(`${tabName}-tab`);
+
+    if (selectedButton && selectedPane) {
+      selectedButton.classList.add('active');
+      (selectedPane as HTMLElement).style.display = 'block';
+      selectedPane.classList.add('active');
+    }
+  };
+
+  // Add click event listeners to tab buttons
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.getAttribute('data-tab');
+      if (tabName) {
+        switchTab(tabName);
+      }
+    });
+  });
+
+  // Initialize first tab
+  const firstTab = tabButtons[0]?.getAttribute('data-tab');
+  if (firstTab) {
+    switchTab(firstTab);
+  }
 
   // Add event listener for clear usage button
   const clearUsageButton = document.getElementById('clear-usage');

@@ -2,7 +2,7 @@
 
 import { configureMarked, renderMarkdown } from '../../utils/markdown';
 import { applyTheme } from '../../utils/theme';
-import { MODELS, MODEL_DISPLAY_NAMES } from '../../config';
+import { MODELS, MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
 import type { ModelType } from '../../config';
 import type { Theme } from '../../utils/theme';
 import { setupContextModes, getPageContent } from '../context/contextModes';
@@ -373,9 +373,20 @@ function setupEventListeners(): void {
       .forEach(([key, value]) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
+        option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
         modelSelector.appendChild(option);
       });
+
+    // Load custom models
+    chrome.storage.sync.get(['customModels'], (result: { customModels?: string[] }) => {
+      const customModels = result.customModels || [];
+      customModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelSelector.appendChild(option);
+      });
+    });
   }
 
   // Set initial theme

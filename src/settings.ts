@@ -1,17 +1,17 @@
 /// <reference types="chrome"/>
 
-import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType } from './config';
+import { MODELS, MODEL_DISPLAY_NAMES, DEFAULT_MODEL, ModelType, ModelDisplayType } from './config';
 
-interface TokenUsage {
+export interface TokenUsage {
   totalTokens: number;
   requestCount: number;
 }
 
-interface CustomPrompts {
+export interface CustomPrompts {
   [key: string]: string;
 }
 
-interface StorageResult {
+export interface StorageResult {
   settings?: {
     apiKey?: string;
     apiUrl?: string;
@@ -45,39 +45,42 @@ const DEFAULT_SETTINGS: Settings = {
 
 export async function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['settings'], (result) => {
+    chrome.storage.sync.get(['settings'], (result: StorageResult) => {
       const settings = result.settings || {};
       resolve({
-        apiKey: settings.apiKey,
-        apiUrl: settings.apiUrl || DEFAULT_SETTINGS.apiUrl,
-        model: settings.model || DEFAULT_MODEL,
-        showIcon: settings.showIcon !== false,
-        shortcuts: DEFAULT_SETTINGS.shortcuts
+        ...DEFAULT_SETTINGS,
+        ...settings
       });
     });
   });
 }
 
-export async function updateSettings(settings: Partial<Settings>): Promise<void> {
+export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
+  const currentSettings = await getSettings();
+  const updatedSettings = {
+    ...currentSettings,
+    ...newSettings
+  };
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['settings'], (result) => {
-      const currentSettings = result.settings || {};
-      const updatedSettings = { ...currentSettings, ...settings };
-      chrome.storage.sync.set({ settings: updatedSettings }, resolve);
+    chrome.storage.sync.set({ settings: updatedSettings }, () => {
+      resolve();
     });
   });
 }
 
-export async function clearApiKey(): Promise<void> {
-  const settings = await getSettings();
-  delete settings.apiKey;
-  return updateSettings(settings);
-}
-
 export async function clearTokenUsage(): Promise<void> {
   return new Promise((resolve) => {
-    chrome.storage.local.set({ tokenUsage: { totalTokens: 0, requestCount: 0 } }, resolve);
+    chrome.storage.local.set({ tokenUsage: { totalTokens: 0, requestCount: 0 } }, () => {
+      resolve();
+    });
   });
+}
+
+export function getModelDisplayName(model: string): string {
+  if (Object.values(MODELS).includes(model as ModelDisplayType)) {
+    return MODEL_DISPLAY_NAMES[model as ModelDisplayType];
+  }
+  return model;
 }
 
 function updateTokenDisplay(usage: TokenUsage): void {
@@ -108,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .forEach(([key, value]) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
+        option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
         modelSelector.appendChild(option);
       });
   }

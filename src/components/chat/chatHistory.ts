@@ -1,7 +1,7 @@
 /// <reference types="chrome"/>
 
 import { renderMarkdown } from '../../utils/markdown';
-import { MODELS, MODEL_DISPLAY_NAMES } from '../../config';
+import { MODELS, MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
 import type { ModelType } from '../../config';
 import { handleQuestion } from './messageHandler';
 import { getPageContent } from '../context/contextModes';
@@ -251,17 +251,32 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
       const modelSelector = document.createElement('select');
       modelSelector.className = 'message-model-selector';
       
+      // Add built-in models
       Object.entries(MODELS)
         .filter(([key]) => key !== 'VISION')
         .forEach(([key, value]) => {
           const option = document.createElement('option');
           option.value = value;
-          option.textContent = MODEL_DISPLAY_NAMES[value as ModelType];
+          option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
           if (value === message.model) {
             option.selected = true;
           }
           modelSelector.appendChild(option);
         });
+
+      // Add custom models
+      chrome.storage.sync.get(['customModels'], (result: { customModels?: string[] }) => {
+        const customModels = result.customModels || [];
+        customModels.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model;
+          if (model === message.model) {
+            option.selected = true;
+          }
+          modelSelector.appendChild(option);
+        });
+      });
 
       const refreshIcon = document.createElement('div');
       refreshIcon.className = 'refresh-icon';
@@ -286,7 +301,7 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
     } else {
       const modelInfo = document.createElement('div');
       modelInfo.className = 'ai-model-info';
-      modelInfo.textContent = MODEL_DISPLAY_NAMES[message.model as ModelType] || message.model || 'Unknown Model';
+      modelInfo.textContent = MODEL_DISPLAY_NAMES[message.model as ModelDisplayType] || message.model || 'Unknown Model';
       modelInfoContainer.appendChild(modelInfo);
     }
   }
