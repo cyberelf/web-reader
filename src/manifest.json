@@ -9,7 +9,8 @@
     "storage",
     "declarativeNetRequest",
     "tabs",
-    "webRequest"
+    "webRequest",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "<all_urls>"

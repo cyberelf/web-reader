@@ -228,20 +228,56 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
     copyButton.setAttribute('aria-label', 'Copy message');
     
     copyButton.addEventListener('click', () => {
-      navigator.clipboard.writeText(message.content).then(() => {
-        copyButton.classList.add('copied');
-        copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 6L9 17l-5-5"></path>
-        </svg>`;
-        setTimeout(() => {
-          copyButton.classList.remove('copied');
-          copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>`;
-        }, 2000);
-      });
+      // Create a temporary textarea element
+      const textarea = document.createElement('textarea');
+      textarea.value = message.content;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      
+      // Try to copy using both methods
+      try {
+        // Try clipboard API first
+        navigator.clipboard.writeText(message.content)
+          .then(showCopySuccess)
+          .catch(() => {
+            // Fallback to execCommand
+            try {
+              document.execCommand('copy');
+              showCopySuccess();
+            } catch (err) {
+              console.error('Copy failed:', err);
+            }
+          });
+      } catch (err) {
+        // If clipboard API fails immediately, try execCommand
+        try {
+          document.execCommand('copy');
+          showCopySuccess();
+        } catch (err) {
+          console.error('Copy failed:', err);
+        }
+      }
+      
+      // Clean up
+      document.body.removeChild(textarea);
     });
+    
+    // Function to show copy success feedback
+    function showCopySuccess() {
+      copyButton.classList.add('copied');
+      copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 6L9 17l-5-5"></path>
+      </svg>`;
+      setTimeout(() => {
+        copyButton.classList.remove('copied');
+        copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>`;
+      }, 2000);
+    }
     
     copyContainer.appendChild(copyButton);
     messageDiv.appendChild(copyContainer);
