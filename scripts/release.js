@@ -8,6 +8,31 @@ const path = require('path');
 const releaseId = process.argv[2];
 const releaseNotes = process.argv.slice(3).join(' ');
 
+// Path to VERSION file
+const versionFilePath = path.join(__dirname, '..', 'VERSION');
+
+// Function to compare version numbers
+function compareVersions(v1, v2) {
+  const v1Parts = v1.split('.').map(Number);
+  const v2Parts = v2.split('.').map(Number);
+  
+  for (let i = 0; i < 3; i++) {
+    if (v1Parts[i] > v2Parts[i]) return 1;
+    if (v1Parts[i] < v2Parts[i]) return -1;
+  }
+  return 0;
+}
+
+// Get current version from VERSION file
+let currentVersion = '0.0.0';
+try {
+  if (fs.existsSync(versionFilePath)) {
+    currentVersion = fs.readFileSync(versionFilePath, 'utf8').trim();
+  }
+} catch (error) {
+  console.log('No existing VERSION file found, will create one');
+}
+
 if (!releaseId) {
   console.error('Please provide a release version (e.g., 1.2.3)');
   process.exit(1);
@@ -24,7 +49,17 @@ if (!/^\d+\.\d+\.\d+$/.test(releaseId)) {
   process.exit(1);
 }
 
+// Validate new version is greater than current version
+if (compareVersions(releaseId, currentVersion) <= 0) {
+  console.error(`New version ${releaseId} must be greater than current version ${currentVersion}`);
+  process.exit(1);
+}
+
 try {
+  // Update VERSION file first
+  fs.writeFileSync(versionFilePath, releaseId + '\n');
+  console.log(`Updated VERSION file to ${releaseId}`);
+
   // Update package.json version
   const packageJsonPath = path.join(__dirname, '..', 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));

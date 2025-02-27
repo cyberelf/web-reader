@@ -1,6 +1,6 @@
 {
   "name": "page-reader-assistant",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A Chrome extension that allows users to ask questions about web page content using AI",
   "scripts": {
     "build": "webpack --mode production",
