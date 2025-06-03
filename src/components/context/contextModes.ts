@@ -298,7 +298,23 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
       displayImage(currentScreenshot, preview);
     }
   } else if (mode === 'page') {
-    const pageContent = document.body.innerText.trim();
+    // Get page content excluding the sidebar for preview
+    const sidebar = document.getElementById('ai-page-reader-sidebar');
+    let pageContent = '';
+    
+    if (sidebar) {
+      // Temporarily hide the sidebar to exclude it from content extraction
+      const originalDisplay = sidebar.style.display;
+      sidebar.style.display = 'none';
+      
+      pageContent = document.body.innerText.trim();
+      
+      // Restore sidebar visibility
+      sidebar.style.display = originalDisplay;
+    } else {
+      pageContent = document.body.innerText.trim();
+    }
+    
     preview.textContent = pageContent.length > 50 
       ? pageContent.substring(0, 50) + '... (Full page will be analyzed)'
       : pageContent;
@@ -474,6 +490,20 @@ function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
 export function getPageContent(): string {
   switch (currentMode) {
     case 'page':
+      // Get page content excluding the sidebar
+      const sidebar = document.getElementById('ai-page-reader-sidebar');
+      if (sidebar) {
+        // Temporarily hide the sidebar to exclude it from content extraction
+        const originalDisplay = sidebar.style.display;
+        sidebar.style.display = 'none';
+        
+        const pageContent = document.body.innerText;
+        
+        // Restore sidebar visibility
+        sidebar.style.display = originalDisplay;
+        
+        return pageContent;
+      }
       return document.body.innerText;
     case 'selection':
       return lastSelection || window.getSelection()?.toString() || '';

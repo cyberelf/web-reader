@@ -1,14 +1,14 @@
 /// <reference types="chrome"/>
 
-import { configureMarked, renderMarkdown } from '../../utils/markdown';
+import { configureMarked } from '../../utils/markdown';
 import { applyTheme } from '../../utils/theme';
-import { MODELS, MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
-import type { ModelType } from '../../config';
+import { MODELS, MODEL_DISPLAY_NAMES, ModelDisplayType, ModelType } from '../../config';
 import type { Theme } from '../../utils/theme';
 import { setupContextModes, getPageContent } from '../context/contextModes';
 import { ShortcutHandler } from '../chat/shortcutHandler';
 import { handleQuestion } from '../chat/messageHandler';
 import { clearChatHistory } from '../chat/chatHistory';
+import { modelManager } from '../../utils/modelManager';
 
 interface Position {
   x: number;
@@ -40,16 +40,14 @@ const DEFAULT_ICON_POSITION = {
 // Add isProcessing state
 let isProcessing = false;
 
-export function setupToggleButton(toggleButton: HTMLButtonElement): void {
-  const dragState: DragState = {
-    isDragging: false,
-    hasStartedDrag: false,
-    currentPosition: { x: 0, y: 0 },
-    initialPosition: { x: 0, y: 0 },
-    pressTimer: undefined,
-    pressStartTime: undefined
-  };
+const dragState: DragState = {
+  isDragging: false,
+  hasStartedDrag: false,
+  currentPosition: { x: 0, y: 0 },
+  initialPosition: { x: 0, y: 0 }
+};
 
+export function setupToggleButton(toggleButton: HTMLButtonElement): void {
   // Reset to default position on every page load
   toggleButton.style.top = DEFAULT_ICON_POSITION.top;
   toggleButton.style.right = DEFAULT_ICON_POSITION.right;
@@ -369,29 +367,7 @@ function setupEventListeners(): void {
 
   // Initialize model selector
   if (modelSelector) {
-    // Clear existing options
-    modelSelector.innerHTML = '';
-    
-    // Add model options
-    Object.entries(MODELS)
-      .filter(([key]) => key !== 'VISION')
-      .forEach(([key, value]) => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
-        modelSelector.appendChild(option);
-      });
-
-    // Load custom models
-    chrome.storage.sync.get(['customModels'], (result: { customModels?: string[] }) => {
-      const customModels = result.customModels || [];
-      customModels.forEach(model => {
-        const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
-        modelSelector.appendChild(option);
-      });
-    });
+    initializeModelSelector(modelSelector);
   }
 
   // Set initial theme
@@ -481,21 +457,115 @@ function setupEventListeners(): void {
     }
   });
 
-  // Load saved model selection
-  chrome.storage.sync.get(['settings'], (result: { settings?: { selectedModel?: ModelType } }) => {
-    if (modelSelector && result.settings?.selectedModel) {
-      modelSelector.value = result.settings.selectedModel;
-    }
-  });
+  // Load saved model selection and save model selection on change
+  const selectedModel = modelManager.getSelectedModel();
+  if (modelSelector && selectedModel) {
+    // The model selector will be updated by updateModelSelector function
+  }
 
   // Save model selection on change
-  modelSelector?.addEventListener('change', () => {
-    if (modelSelector) {
-      chrome.storage.sync.get(['settings'], (result: { settings?: { selectedModel?: ModelType } }) => {
-        const settings = result.settings || {};
-        settings.selectedModel = modelSelector.value as ModelType;
-        chrome.storage.sync.set({ settings });
-      });
+  modelSelector?.addEventListener('change', async () => {
+    if (modelSelector && modelSelector.value) {
+      try {
+        await modelManager.setSelectedModel(modelSelector.value);
+      } catch (error) {
+        console.error('Failed to save model selection:', error);
+      }
     }
   });
+}
+
+async function initializeModelSelector(modelSelector: HTMLSelectElement): Promise<void> {
+  try {
+    // Initialize model manager
+    await modelManager.initialize();
+    
+    // Update the model selector
+    updateModelSelector(modelSelector);
+    
+    // Listen for storage changes to sync models
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'sync' && changes.modelManagerData) {
+        updateModelSelector(modelSelector);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Failed to initialize model selector:', error);
+    
+    // Fallback to default models
+    Object.entries(MODELS)
+      .filter(([key]) => key !== 'VISION')
+      .forEach(([key, value]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
+        modelSelector.appendChild(option);
+      });
+  }
+}
+
+function updateModelSelector(modelSelector: HTMLSelectElement): void {
+  // Clear existing options
+  modelSelector.innerHTML = '';
+  
+  // Get all available models
+  const allModels = modelManager.getAllModels();
+  const selectedModel = modelManager.getSelectedModel();
+  
+  if (allModels.length === 0) {
+    // Fallback to default models if none are available
+    Object.entries(MODELS)
+      .filter(([key]) => key !== 'VISION')
+      .forEach(([key, value]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
+        modelSelector.appendChild(option);
+      });
+  } else {
+    // Group models by provider
+    const modelsByProvider: Record<string, typeof allModels> = {};
+    allModels.forEach(model => {
+      if (!modelsByProvider[model.provider]) {
+        modelsByProvider[model.provider] = [];
+      }
+      modelsByProvider[model.provider].push(model);
+    });
+    
+    // Add models grouped by provider
+    Object.entries(modelsByProvider).forEach(([providerId, models]) => {
+      const provider = modelManager.getProvider(providerId);
+      if (provider && models.length > 0) {
+        // Only show providers that are configured or have models
+        const hasConfiguredModels = provider.isConfigured || models.some(m => m.isManual);
+        
+        if (hasConfiguredModels) {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = provider.name;
+          
+          models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name}${model.isVision ? ' (Vision)' : ''}`;
+            if (model.id === selectedModel) {
+              option.selected = true;
+            }
+            optgroup.appendChild(option);
+          });
+          
+          modelSelector.appendChild(optgroup);
+        }
+      }
+    });
+  }
+  
+  // If no model is selected or the selected model is not available, select the first available one
+  if ((!selectedModel || !Array.from(modelSelector.options).some(opt => opt.value === selectedModel)) && modelSelector.options.length > 0) {
+    const firstOption = modelSelector.options[0];
+    if (firstOption.value) {
+      modelManager.setSelectedModel(firstOption.value);
+      firstOption.selected = true;
+    }
+  }
 } 

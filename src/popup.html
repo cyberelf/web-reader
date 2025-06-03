@@ -18,14 +18,190 @@
     <div class="tab-content">
       <!-- Model Tab -->
       <div class="tab-pane active" id="model-tab">
-        <label for="model">Model</label>
-        <select id="model-selector">
-          <!-- Options will be populated by JavaScript -->
-        </select>
-        <div class="custom-model-section">
-          <div class="custom-model-input-group">
-            <input type="text" id="custom-model" placeholder="Enter custom model name" />
-            <button id="add-custom-model" class="ai-button-base">Add Model</button>
+        <div class="model-management-container">
+          <!-- Provider Selection -->
+          <div class="provider-section">
+            <label for="provider-selector">Provider</label>
+            <select id="provider-selector">
+              <option value="openai">OpenAI</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="custom">Custom OpenAI Compatible</option>
+            </select>
+          </div>
+
+          <!-- Provider Configuration -->
+          <div class="provider-config-section">
+            <!-- OpenAI Config -->
+            <div class="provider-config" id="openai-config">
+              <div class="setting-group">
+                <label for="openai-api-key">API Key</label>
+                <div class="api-key-container">
+                  <input type="password" id="openai-api-key" placeholder="sk-..." />
+                  <button class="toggle-api-key" data-target="openai-api-key">
+                    <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="openai-url">API URL</label>
+                <input type="url" id="openai-url" value="https://api.openai.com/v1" readonly />
+              </div>
+            </div>
+
+            <!-- DeepSeek Config -->
+            <div class="provider-config hidden" id="deepseek-config">
+              <div class="setting-group">
+                <label for="deepseek-api-key">API Key</label>
+                <div class="api-key-container">
+                  <input type="password" id="deepseek-api-key" placeholder="sk-..." />
+                  <button class="toggle-api-key" data-target="deepseek-api-key">
+                    <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="deepseek-url">API URL</label>
+                <input type="url" id="deepseek-url" value="https://api.deepseek.com/v1" readonly />
+              </div>
+            </div>
+
+            <!-- Gemini Config -->
+            <div class="provider-config hidden" id="gemini-config">
+              <div class="setting-group">
+                <label for="gemini-api-key">API Key</label>
+                <div class="api-key-container">
+                  <input type="password" id="gemini-api-key" placeholder="AIza..." />
+                  <button class="toggle-api-key" data-target="gemini-api-key">
+                    <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="gemini-url">API URL</label>
+                <input type="url" id="gemini-url" value="https://generativelanguage.googleapis.com/v1beta" readonly />
+              </div>
+            </div>
+
+            <!-- Custom Provider Config -->
+            <div class="provider-config hidden" id="custom-config">
+              <div class="setting-group">
+                <label for="custom-api-key">API Key</label>
+                <div class="api-key-container">
+                  <input type="password" id="custom-api-key" placeholder="API Key..." />
+                  <button class="toggle-api-key" data-target="custom-api-key">
+                    <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="custom-url">API URL</label>
+                <input type="url" id="custom-url" placeholder="https://your-api.example.com/v1" />
+              </div>
+              <div class="setting-group">
+                <label for="custom-name">Provider Name</label>
+                <input type="text" id="custom-name" placeholder="My Custom Provider" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Model Management -->
+          <div class="model-section">
+            <div class="model-section-header">
+              <h3>Available Models</h3>
+              <div class="model-actions">
+                <button id="sync-models" class="ai-button-base ai-primary-button">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                  </svg>
+                  Sync Models
+                </button>
+                <button id="add-manual-model" class="ai-button-base">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Model
+                </button>
+              </div>
+            </div>
+
+            <!-- Model List -->
+            <div class="model-list" id="model-list">
+              <div class="model-list-loading">
+                <div class="loading-spinner"></div>
+                <span>Loading models...</span>
+              </div>
+            </div>
+
+            <!-- Selected Model -->
+            <div class="selected-model-section">
+              <label for="selected-model">Selected Model</label>
+              <select id="selected-model">
+                <option value="">Select a model...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Manual Model Addition -->
+          <div class="manual-model-section hidden" id="manual-model-section">
+            <h4>Add Custom Model</h4>
+            <div class="setting-group">
+              <label for="manual-model-id">Model ID</label>
+              <input type="text" id="manual-model-id" placeholder="gpt-4-custom" />
+            </div>
+            <div class="setting-group">
+              <label for="manual-model-name">Display Name</label>
+              <input type="text" id="manual-model-name" placeholder="GPT-4 Custom" />
+            </div>
+            <div class="manual-model-actions">
+              <button id="save-manual-model" class="ai-button-base ai-primary-button">Save Model</button>
+              <button id="cancel-manual-model" class="ai-button-base">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Delete Model Confirmation Modal -->
+          <div class="ai-modal hidden" id="delete-model-modal">
+            <div class="ai-modal-content">
+              <h3>Delete Model</h3>
+              <p>Are you sure you want to delete this model?</p>
+              <div class="model-delete-info">
+                <strong id="delete-model-name"></strong>
+                <small id="delete-model-id"></small>
+              </div>
+              <div class="ai-modal-actions">
+                <button class="ai-modal-button ai-cancel-button" id="cancel-delete-model">Cancel</button>
+                <button class="ai-modal-button ai-danger-button" id="confirm-delete-model">Delete Model</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -50,35 +226,22 @@
           <button id="clear-usage" class="ai-button-base ai-danger-button">Clear Usage Stats</button>
         </div>
 
+        <!-- Clear Stats Confirmation Modal -->
+        <div class="ai-modal hidden" id="clear-stats-modal">
+          <div class="ai-modal-content">
+            <h3>Clear Usage Statistics</h3>
+            <p>Are you sure you want to clear all usage statistics? This action cannot be undone.</p>
+            <div class="ai-modal-actions">
+              <button class="ai-modal-button ai-cancel-button" id="cancel-clear-stats">Cancel</button>
+              <button class="ai-modal-button ai-danger-button" id="confirm-clear-stats">Clear Statistics</button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Settings Tab -->
       <div class="tab-pane" id="settings-tab">
-
-        <div class="setting-group">
-          <label for="api-key">OpenAI API Key</label>
-          <div class="api-key-container">
-            <input type="password" id="api-key" placeholder="sk-..." />
-            <button id="toggle-api-key" class="toggle-api-key" aria-label="Toggle API key visibility">
-              <svg class="show-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              <svg class="hide-key" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2">
-                <path
-                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-                </path>
-                <line x1="1" y1="1" x2="23" y2="23"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="setting-group">
-          <label for="openai-url">OpenAI API URL</label>
-          <input type="url" id="openai-url" placeholder="https://api.openai.com/v1" />
-        </div>
         <div class="setting-group">
           <div class="toggle-group">
             <label for="show-icon">Show Icon</label>
@@ -88,7 +251,6 @@
             </label>
           </div>
         </div>
-
       </div>
     </div>
 

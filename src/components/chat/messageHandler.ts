@@ -1,49 +1,34 @@
 /// <reference types="chrome"/>
 
 import { addMessage, updateLastMessage } from './chatHistory';
-import { getSettings } from '../../settings';
-import type { ModelType } from '../../config';
 import { handleShortcut } from './promptShortcuts';
 import { resizeImage } from '../../utils/imageUtils';
-
-interface OpenAIResponse {
-  choices: Array<{
-    message?: {
-      content: string;
-    };
-    delta?: {
-      content?: string;
-    };
-  }>;
-  usage?: {
-    total_tokens: number;
-    prompt_tokens: number;
-    completion_tokens: number;
-  };
-  error?: {
-    message: string;
-  };
-}
-
-interface OpenAIRequest {
-  model: string;
-  messages: Array<{
-    role: 'user' | 'system' | 'assistant';
-    content: string | Array<{
-      type: 'text' | 'image_url';
-      text?: string;
-      image_url?: {
-        url: string;
-      };
-    }>;
-  }>;
-  stream: boolean;
-  max_tokens?: number;
-}
+import { createAPIClient, type LLMRequest, type APIError } from '../../utils/apiClient';
+import { createRateLimiter, type RateLimiter } from '../../utils/rateLimiter';
+import { modelManager } from '../../utils/modelManager';
+import type { ModelType } from '../../config';
 
 interface TokenUsage {
   totalTokens: number;
   requestCount: number;
+}
+
+// Global rate limiter instance
+let rateLimiter: RateLimiter | null = null;
+
+function getRateLimiter(apiUrl: string): RateLimiter {
+  if (!rateLimiter) {
+    // Detect provider and create appropriate rate limiter
+    if (apiUrl.includes('deepseek')) {
+      rateLimiter = createRateLimiter('DEEPSEEK');
+    } else if (apiUrl.includes('generativelanguage.googleapis.com') || apiUrl.includes('gemini')) {
+      rateLimiter = createRateLimiter('GEMINI_FREE'); // Default to free tier, can be made configurable
+    } else {
+      // Default to conservative limits for unknown providers
+      rateLimiter = createRateLimiter('CONSERVATIVE');
+    }
+  }
+  return rateLimiter;
 }
 
 async function updateTokenUsage(newTokens: number): Promise<void> {
@@ -62,21 +47,82 @@ async function updateTokenUsage(newTokens: number): Promise<void> {
   });
 }
 
+function createUserFriendlyErrorMessage(error: APIError): string {
+  switch (error.type) {
+    case 'network':
+      return 'Network error: Please check your internet connection and try again.';
+    case 'timeout':
+      return 'Request timeout: The request took too long to complete. Please try again.';
+    case 'rate_limit':
+      return 'Rate limit exceeded: Please wait a moment before making another request.';
+    case 'api':
+      if (error.status === 401) {
+        return 'Authentication failed: Please check your API key in the extension settings.';
+      } else if (error.status === 403) {
+        return 'Access forbidden: Your API key may not have permission to use this model.';
+      } else if (error.status === 404) {
+        return 'Model not found: The selected model may not be available.';
+      } else if (error.status === 429) {
+        return 'Rate limit exceeded: Please wait a moment before making another request.';
+      }
+      return `API error (${error.status}): ${error.message}`;
+    default:
+      return `Unexpected error: ${error.message}`;
+  }
+}
+
+function estimateTokens(messages: any[]): number {
+  // Rough estimation: 1 token ≈ 4 characters for text
+  let totalChars = 0;
+  
+  for (const message of messages) {
+    if (typeof message.content === 'string') {
+      totalChars += message.content.length;
+    } else if (Array.isArray(message.content)) {
+      for (const item of message.content) {
+        if (item.type === 'text' && item.text) {
+          totalChars += item.text.length;
+        } else if (item.type === 'image_url') {
+          // Images typically use more tokens, estimate based on resolution
+          totalChars += 1000; // Base estimate for image processing
+        }
+      }
+    }
+  }
+  
+  // Add some buffer for response tokens and system overhead
+  return Math.ceil(totalChars / 4) + 1000;
+}
+
+function formatWaitTime(ms: number): string {
+  if (ms < 60000) {
+    return `${Math.ceil(ms / 1000)} seconds`;
+  } else if (ms < 3600000) {
+    return `${Math.ceil(ms / 60000)} minutes`;
+  } else {
+    return `${Math.ceil(ms / 3600000)} hours`;
+  }
+}
+
 export async function handleQuestion(question: string, context: string, model?: ModelType): Promise<void> {
   try {
     // Check if the question is a shortcut
     const shortcutPrompt = await handleShortcut(question);
     const finalQuestion = shortcutPrompt || question;
 
-    const settings = await getSettings();
-    if (!settings.apiKey) {
-      throw new Error('Please set your OpenAI API key in the extension settings.');
+    // Initialize model manager if needed
+    await modelManager.initialize();
+
+    // Get current configuration
+    const config = modelManager.getCurrentConfig();
+    if (!config || !config.apiKey) {
+      throw new Error('Please configure an API provider in the extension settings.');
     }
 
     await addMessage('user', finalQuestion);
 
     // Create placeholder message for streaming
-    const selectedModel = model || settings.model;
+    const selectedModel = model || config.model || 'gpt-4o-mini';
     await addMessage('assistant', '', selectedModel);
 
     // Prepare messages based on whether we have an image or text
@@ -88,118 +134,105 @@ export async function handleQuestion(question: string, context: string, model?: 
       const resizedImage = await resizeImage(context);
       
       messages.push({
-        role: 'system',
+        role: 'system' as const,
         content: 'You are analyzing the provided image. Be specific and detailed in your observations.'
       });
       // Add user message with image
       messages.push({
-        role: 'user',
+        role: 'user' as const,
         content: [
           {
-            type: 'image_url',
+            type: 'image_url' as const,
             image_url: {
               url: resizedImage
             }
           },
           {
-            type: 'text',
+            type: 'text' as const,
             text: finalQuestion
           }
         ]
       });
     } else {
       messages.push({
-        role: 'system',
+        role: 'system' as const,
         content: context ? `You are analyzing the following content:\n\n${context}` : 'You are analyzing the current webpage.'
       });
       // Add user message with text
       messages.push({
-        role: 'user',
+        role: 'user' as const,
         content: finalQuestion
       });
     }
 
-    // First make a non-streaming request to get token usage
-    const nonStreamingResponse = await fetch(`${settings.apiUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages,
-        stream: false
-      } as OpenAIRequest)
+    // Check rate limits before making the request
+    const apiUrl = config.apiUrl;
+    const limiter = getRateLimiter(apiUrl);
+    const estimatedTokens = estimateTokens(messages);
+    
+    const rateLimitCheck = await limiter.canMakeRequest(estimatedTokens);
+    if (!rateLimitCheck.allowed) {
+      const waitTimeText = rateLimitCheck.waitTime ? ` Please wait ${formatWaitTime(rateLimitCheck.waitTime)} before trying again.` : '';
+      const errorMessage = `⏱️ **Rate Limit**: ${rateLimitCheck.reason}${waitTimeText}`;
+      await updateLastMessage(errorMessage);
+      return;
+    }
+
+    // Create API client
+    const apiClient = createAPIClient(config.apiKey, apiUrl, {
+      timeout: 60000, // 60 seconds timeout
+      maxRetries: 3,
+      retryDelay: 1000,
+      requestQueue: true
     });
 
-    if (!nonStreamingResponse.ok) {
-      const data = await nonStreamingResponse.json();
-      throw new Error(data.error?.message || 'Failed to get response from OpenAI');
-    }
+    const request: LLMRequest = {
+      model: selectedModel || 'gpt-4o-mini',
+      messages,
+      max_tokens: 4000,
+      temperature: 0.7
+    };
 
-    const nonStreamingData = await nonStreamingResponse.json();
-    const totalTokens = nonStreamingData.usage?.total_tokens || 0;
-
-    // Now make the streaming request for the actual response
-    const response = await fetch(`${settings.apiUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.apiKey}`
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages,
-        stream: true
-      } as OpenAIRequest)
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error?.message || 'Failed to get response from OpenAI');
-    }
-
-    if (!response.body) {
-      throw new Error('No response body received');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
     let accumulatedContent = '';
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    // Send streaming request
+    const response = await apiClient.sendStreamingRequest(request, (chunk: string) => {
+      accumulatedContent += chunk;
+      updateLastMessage(accumulatedContent);
+    });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+    // Record the request in rate limiter
+    const actualTokens = response.usage?.total_tokens || estimatedTokens;
+    await limiter.recordRequest(actualTokens);
 
-        for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            try {
-              const data: OpenAIResponse = JSON.parse(line.slice(6));
-              const content = data.choices[0]?.delta?.content || '';
-              accumulatedContent += content;
-              await updateLastMessage(accumulatedContent);
-            } catch (e) {
-              console.error('Error parsing streaming response:', e);
-            }
-          }
-        }
-      }
-
-      // Update token usage after successful completion
-      await updateTokenUsage(totalTokens);
-    } catch (error) {
-      console.error('Error reading stream:', error);
-      throw error;
-    } finally {
-      reader.releaseLock();
+    // Update token usage if available
+    if (response.usage?.total_tokens) {
+      await updateTokenUsage(response.usage.total_tokens);
     }
+
   } catch (error) {
     console.error('Error in handleQuestion:', error);
+    
+    // Create user-friendly error message
+    let errorMessage = 'An unexpected error occurred. Please try again.';
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API') || error.message.includes('configure')) {
+        errorMessage = error.message;
+      } else {
+        const apiError = error as APIError;
+        errorMessage = createUserFriendlyErrorMessage(apiError);
+      }
+    }
+
+    // Update the last message with error
+    await updateLastMessage(`❌ **Error**: ${errorMessage}`);
+    
     throw error;
   }
+}
+
+// Export function to reset rate limiter (useful for settings changes)
+export function resetRateLimiter(): void {
+  rateLimiter = null;
 } 

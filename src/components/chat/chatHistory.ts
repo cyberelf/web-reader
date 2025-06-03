@@ -1,10 +1,11 @@
 /// <reference types="chrome"/>
 
 import { renderMarkdown } from '../../utils/markdown';
-import { MODELS, MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
+import { MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
 import type { ModelType } from '../../config';
 import { handleQuestion } from './messageHandler';
 import { getPageContent } from '../context/contextModes';
+import { modelManager } from '../../utils/modelManager';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -28,6 +29,9 @@ export async function loadChatHistory(): Promise<void> {
   if (!answerDiv) return;
 
   try {
+    // Initialize model manager first
+    await modelManager.initialize();
+    
     const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
       chrome.storage.local.get(['chatHistories'], resolve);
     });
@@ -88,6 +92,9 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
   currentHistory.messages.push(message);
   
   try {
+    // Initialize model manager if not already initialized
+    await modelManager.initialize();
+    
     const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
       chrome.storage.local.get(['chatHistories'], resolve);
     });
@@ -287,32 +294,53 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
       const modelSelector = document.createElement('select');
       modelSelector.className = 'message-model-selector';
       
-      // Add built-in models
-      Object.entries(MODELS)
-        .filter(([key]) => key !== 'VISION')
-        .forEach(([key, value]) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = MODEL_DISPLAY_NAMES[value as ModelDisplayType] || value;
-          if (value === message.model) {
-            option.selected = true;
+      // Get all available models from model manager
+      const allModels = modelManager.getAllModels();
+      const selectedModel = modelManager.getSelectedModel();
+      
+      if (allModels.length === 0) {
+        // Fallback to a simple option if no models are available
+        const option = document.createElement('option');
+        option.value = message.model || '';
+        option.textContent = message.model || 'Unknown Model';
+        option.selected = true;
+        modelSelector.appendChild(option);
+      } else {
+        // Group models by provider
+        const modelsByProvider: Record<string, typeof allModels> = {};
+        allModels.forEach(model => {
+          if (!modelsByProvider[model.provider]) {
+            modelsByProvider[model.provider] = [];
           }
-          modelSelector.appendChild(option);
+          modelsByProvider[model.provider].push(model);
         });
-
-      // Add custom models
-      chrome.storage.sync.get(['customModels'], (result: { customModels?: string[] }) => {
-        const customModels = result.customModels || [];
-        customModels.forEach(model => {
-          const option = document.createElement('option');
-          option.value = model;
-          option.textContent = model;
-          if (model === message.model) {
-            option.selected = true;
+        
+        // Add models grouped by provider
+        Object.entries(modelsByProvider).forEach(([providerId, models]) => {
+          const provider = modelManager.getProvider(providerId);
+          if (provider && models.length > 0) {
+            // Only show providers that are configured or have models
+            const hasConfiguredModels = provider.isConfigured || models.some(m => m.isManual);
+            
+            if (hasConfiguredModels) {
+              const optgroup = document.createElement('optgroup');
+              optgroup.label = provider.name;
+              
+              models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `${model.name}${model.isVision ? ' (Vision)' : ''}`;
+                if (model.id === message.model) {
+                  option.selected = true;
+                }
+                optgroup.appendChild(option);
+              });
+              
+              modelSelector.appendChild(optgroup);
+            }
           }
-          modelSelector.appendChild(option);
         });
-      });
+      }
 
       const refreshIcon = document.createElement('div');
       refreshIcon.className = 'refresh-icon';
@@ -337,7 +365,12 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
     } else {
       const modelInfo = document.createElement('div');
       modelInfo.className = 'ai-model-info';
-      modelInfo.textContent = MODEL_DISPLAY_NAMES[message.model as ModelDisplayType] || message.model || 'Unknown Model';
+      
+      // Try to get model display name from model manager first
+      const model = modelManager.getAllModels().find(m => m.id === message.model);
+      const displayName = model ? model.name : (MODEL_DISPLAY_NAMES[message.model as ModelDisplayType] || message.model || 'Unknown Model');
+      
+      modelInfo.textContent = displayName;
       modelInfoContainer.appendChild(modelInfo);
     }
   }
