@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Page Reader Assistant",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A Chrome extension that helps you read and analyze web pages",
   "permissions": [
     "activeTab",
