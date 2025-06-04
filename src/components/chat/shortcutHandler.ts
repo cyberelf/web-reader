@@ -19,8 +19,17 @@ export class ShortcutHandler {
   private setupEventListeners(): void {
     this.input.addEventListener('input', () => this.handleInput());
     this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+    
+    // Add support for Tab key to accept first suggestion
+    this.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' && this.matches.length > 0 && this.dropdown) {
+        e.preventDefault();
+        this.applyShortcut(this.matches[this.selectedIndex].command);
+      }
+    });
+    
     document.addEventListener('click', (e) => {
-      if (e.target !== this.input && this.dropdown) {
+      if (e.target !== this.input && this.dropdown && !this.dropdown.contains(e.target as Node)) {
         this.hideDropdown();
       }
     });
@@ -28,30 +37,50 @@ export class ShortcutHandler {
 
   private async handleInput(): Promise<void> {
     const text = this.input.value;
-    const lastWord = text.split(' ').pop() || '';
+    const cursorPos = this.input.selectionStart;
+    
+    // Find the word at the cursor position
+    const beforeCursor = text.substring(0, cursorPos);
+    const afterCursor = text.substring(cursorPos);
+    
+    // Find the start of the current word
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentWord = beforeCursor.substring(lastSpaceIndex + 1);
 
-    if (lastWord.startsWith('/')) {
-      // Get both default shortcuts and custom prompts
-      const [settings, { customPrompts = {} }] = await Promise.all([
-        getSettings(),
-        new Promise<{ customPrompts?: Record<string, string> }>(resolve => {
-          chrome.storage.sync.get(['customPrompts'], resolve);
-        })
-      ]);
+    if (currentWord.startsWith('/')) {
+      try {
+        // Get both default shortcuts and custom prompts
+        const [settings, { customPrompts = {} }] = await Promise.all([
+          getSettings(),
+          new Promise<{ customPrompts?: Record<string, string> }>(resolve => {
+            chrome.storage.sync.get(['customPrompts'], resolve);
+          })
+        ]);
 
-      // Combine default shortcuts and custom prompts
-      const allShortcuts = {
-        ...settings.shortcuts,
-        ...customPrompts
-      };
+        // Combine default shortcuts and custom prompts
+        const allShortcuts = {
+          ...settings.shortcuts,
+          ...customPrompts
+        };
 
-      this.matches = Object.entries(allShortcuts)
-        .filter(([command]) => command.startsWith(lastWord))
-        .map(([command, description]) => ({ command, description }));
+        // If just '/', show all shortcuts, otherwise filter by match
+        this.matches = currentWord.length === 1 
+          ? Object.entries(allShortcuts)
+              .map(([command, description]) => ({ command, description }))
+              .sort((a, b) => a.command.localeCompare(b.command))
+          : Object.entries(allShortcuts)
+              .filter(([command]) => command.toLowerCase().startsWith(currentWord.toLowerCase()))
+              .map(([command, description]) => ({ command, description }))
+              .sort((a, b) => a.command.localeCompare(b.command));
 
-      if (this.matches.length > 0) {
-        this.showDropdown();
-      } else {
+        if (this.matches.length > 0) {
+          this.selectedIndex = 0; // Reset selection to first item
+          this.showDropdown();
+        } else {
+          this.hideDropdown();
+        }
+      } catch (error) {
+        console.error('Error loading shortcuts:', error);
         this.hideDropdown();
       }
     } else {
@@ -92,7 +121,13 @@ export class ShortcutHandler {
     if (!this.dropdown) {
       this.dropdown = document.createElement('div');
       this.dropdown.className = 'shortcut-autocomplete';
-      this.input.parentElement?.appendChild(this.dropdown);
+      // Find the input section to append the dropdown there
+      const inputSection = this.input.closest('.ai-input-section');
+      if (inputSection) {
+        inputSection.appendChild(this.dropdown);
+      } else {
+        this.input.parentElement?.appendChild(this.dropdown);
+      }
     }
 
     this.dropdown.innerHTML = this.matches
@@ -132,9 +167,35 @@ export class ShortcutHandler {
   private applyShortcut(command: string): void {
     // Replace the last word with the full command
     const words = this.input.value.split(' ');
-    words[words.length - 1] = command;
-    this.input.value = words.join(' ');
+    const lastWordIndex = words.length - 1;
+    
+    // Find the position of the current word
+    const beforeCursor = this.input.value.substring(0, this.input.selectionStart);
+    const afterCursor = this.input.value.substring(this.input.selectionStart);
+    
+    // Find the start of the current word
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentWord = beforeCursor.substring(lastSpaceIndex + 1);
+    
+    if (currentWord.startsWith('/')) {
+      // Replace just the command part
+      const newValue = beforeCursor.substring(0, lastSpaceIndex + 1) + command + ' ' + afterCursor;
+      this.input.value = newValue;
+      
+      // Set cursor position after the command
+      const newCursorPos = lastSpaceIndex + 1 + command.length + 1;
+      this.input.setSelectionRange(newCursorPos, newCursorPos);
+    } else {
+      // Fallback to word replacement
+      words[lastWordIndex] = command;
+      this.input.value = words.join(' ') + ' ';
+      
+      // Move cursor to end
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+    }
+    
     this.hideDropdown();
+    this.input.focus();
 
     // Handle special commands
     switch (command) {

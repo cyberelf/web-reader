@@ -288,8 +288,9 @@ export function createSidebar(): void {
         <div class="ai-context-header">
           <div class="ai-context-mode-wrapper">
             <div class="ai-slider-container">
-              <div class="ai-slider-option" data-mode="page">Full Page</div>
+              <div class="ai-slider-option" data-mode="page">Page</div>
               <div class="ai-slider-option" data-mode="selection">Selection</div>
+              <div class="ai-slider-option" data-mode="element">Element</div>
               <div class="ai-slider-option" data-mode="screenshot">Screenshot</div>
               <div class="ai-slider-option" data-mode="youtube">YouTube</div>
               <div class="ai-slider-highlight"></div>

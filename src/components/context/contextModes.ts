@@ -1,12 +1,26 @@
 /// <reference types="chrome"/>
 
-type ContextMode = 'page' | 'selection' | 'screenshot' | 'youtube';
+type ContextMode = 'page' | 'selection' | 'screenshot' | 'youtube' | 'element';
 
 let currentMode: ContextMode = 'page';
 let currentScreenshot: string | null = null;
 let lastSelection: string = '';
 let youtubeSubtitles: string = '';
 let contentPreviewElement: HTMLElement | null = null;
+let isElementSelectionActive: boolean = false;
+let selectedElement: HTMLElement | null = null;
+let selectedElementText: string = '';
+
+// Try to recover element selection from sessionStorage on initialization
+try {
+  const storedText = sessionStorage.getItem('ai-selected-element-text');
+  if (storedText) {
+    selectedElementText = storedText;
+  }
+} catch (error) {
+  console.warn('Could not recover element selection from sessionStorage on init:', error);
+}
+let elementHighlight: HTMLElement | null = null;
 
 interface SubtitleSegment {
   utf8: string;
@@ -65,6 +79,250 @@ function downloadText(text: string, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function createElementHighlight(): HTMLElement {
+  const highlight = document.createElement('div');
+  highlight.id = 'ai-element-highlight';
+  highlight.style.cssText = `
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #007bff;
+    background-color: rgba(0, 123, 255, 0.1);
+    z-index: 999999;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+  `;
+  document.body.appendChild(highlight);
+  return highlight;
+}
+
+function highlightElement(element: HTMLElement): void {
+  if (!elementHighlight) {
+    elementHighlight = createElementHighlight();
+  }
+  
+  const rect = element.getBoundingClientRect();
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+  
+  elementHighlight.style.top = (rect.top + scrollTop) + 'px';
+  elementHighlight.style.left = (rect.left + scrollLeft) + 'px';
+  elementHighlight.style.width = rect.width + 'px';
+  elementHighlight.style.height = rect.height + 'px';
+  elementHighlight.style.display = 'block';
+}
+
+function removeElementHighlight(): void {
+  if (elementHighlight) {
+    elementHighlight.style.display = 'none';
+  }
+}
+
+function startElementSelection(): void {
+  isElementSelectionActive = true;
+  document.body.style.cursor = 'crosshair';
+  
+  // Add event listeners for element selection
+  document.addEventListener('mouseover', handleElementHover, true);
+  document.addEventListener('click', handleElementClick, true);
+  document.addEventListener('keydown', handleElementSelectionKeydown, true);
+  
+  // Show instruction overlay
+  showElementSelectionInstructions();
+}
+
+function stopElementSelection(): void {
+  isElementSelectionActive = false;
+  document.body.style.cursor = '';
+  
+  // Remove event listeners
+  document.removeEventListener('mouseover', handleElementHover, true);
+  document.removeEventListener('click', handleElementClick, true);
+  document.removeEventListener('keydown', handleElementSelectionKeydown, true);
+  
+  removeElementHighlight();
+  hideElementSelectionInstructions();
+}
+
+function handleElementHover(event: MouseEvent): void {
+  if (!isElementSelectionActive) return;
+  
+  const target = event.target as HTMLElement;
+  
+  // Skip if it's our own UI elements
+  if (target.closest('#ai-page-reader-sidebar') || 
+      target.closest('#ai-page-reader-toggle') ||
+      target.closest('#ai-element-highlight') ||
+      target.closest('#ai-element-selection-instructions')) {
+    return;
+  }
+  
+  highlightElement(target);
+}
+
+function handleElementClick(event: MouseEvent): void {
+  if (!isElementSelectionActive) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const target = event.target as HTMLElement;
+  
+  // Skip if it's our own UI elements
+  if (target.closest('#ai-page-reader-sidebar') || 
+      target.closest('#ai-page-reader-toggle') ||
+      target.closest('#ai-element-highlight') ||
+      target.closest('#ai-element-selection-instructions')) {
+    return;
+  }
+  
+  selectedElement = target;
+  selectedElementText = extractElementText(target);
+  
+  // Store the element text and selection info in sessionStorage for persistence
+  try {
+    sessionStorage.setItem('ai-selected-element-text', selectedElementText);
+    // Store element selector info to help re-find the element if needed
+    const elementPath = getElementPath(target);
+    sessionStorage.setItem('ai-selected-element-path', elementPath);
+  } catch (error) {
+    console.warn('Could not store element selection in sessionStorage:', error);
+  }
+  
+  stopElementSelection();
+  updateElementPreview();
+}
+
+function handleElementSelectionKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    stopElementSelection();
+  }
+}
+
+function getElementPath(element: HTMLElement): string {
+  const path = [];
+  let current = element;
+  
+  while (current && current !== document.body) {
+    let selector = current.tagName.toLowerCase();
+    
+    if (current.id) {
+      selector += `#${current.id}`;
+      path.unshift(selector);
+      break; // IDs are unique, so we can stop here
+    } else if (current.className) {
+      const classes = current.className.split(' ').filter(cls => cls.trim()).slice(0, 2); // Limit to first 2 classes
+      if (classes.length > 0) {
+        selector += `.${classes.join('.')}`;
+      }
+    }
+    
+    // Add nth-child if needed for specificity
+    const siblings = Array.from(current.parentNode?.children || []);
+    const sameTagSiblings = siblings.filter(sibling => sibling.tagName === current.tagName);
+    if (sameTagSiblings.length > 1) {
+      const index = sameTagSiblings.indexOf(current) + 1;
+      selector += `:nth-of-type(${index})`;
+    }
+    
+    path.unshift(selector);
+    current = current.parentElement as HTMLElement;
+  }
+  
+  return path.join(' > ');
+}
+
+function extractElementText(element: HTMLElement): string {
+  // Get text content, but clean it up
+  let text = element.innerText || element.textContent || '';
+  
+  // Remove extra whitespace and normalize
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // If the element has very little text, try to get more context
+  if (text.length < 10) {
+    // Try to get text from child elements
+    const children = element.querySelectorAll('*');
+    const allText = Array.from(children)
+      .map(child => child.textContent || '')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (allText.length > text.length) {
+      text = allText;
+    }
+  }
+  
+  return text;
+}
+
+function updateElementPreview(): void {
+  if (contentPreviewElement && selectedElementText) {
+    const preview = selectedElementText.length > 100 
+      ? selectedElementText.substring(0, 100) + '...'
+      : selectedElementText;
+    
+    contentPreviewElement.innerHTML = `
+      <div class="element-selection-preview">
+        <div class="element-info">
+          <strong>Selected Element:</strong> ${selectedElement?.tagName.toLowerCase() || 'unknown'}
+          ${selectedElement?.className ? `<span class="element-class">.${selectedElement.className.split(' ')[0]}</span>` : ''}
+        </div>
+        <div class="element-text">${preview}</div>
+        <button class="reselect-element-btn">Select Different Element</button>
+      </div>
+    `;
+    
+    // Add event listener to reselect button
+    const reselectBtn = contentPreviewElement.querySelector('.reselect-element-btn');
+    reselectBtn?.addEventListener('click', () => {
+      startElementSelection();
+    });
+  }
+}
+
+function showElementSelectionInstructions(): void {
+  const instructions = document.createElement('div');
+  instructions.id = 'ai-element-selection-instructions';
+  instructions.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    z-index: 1000000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  `;
+  instructions.innerHTML = `
+    <div>
+      <strong>Element Selection Mode</strong><br>
+      Hover over elements to highlight them<br>
+      Click to select an element<br>
+      Press <kbd>Escape</kbd> to cancel
+    </div>
+  `;
+  document.body.appendChild(instructions);
+  
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    hideElementSelectionInstructions();
+  }, 3000);
+}
+
+function hideElementSelectionInstructions(): void {
+  const instructions = document.getElementById('ai-element-selection-instructions');
+  if (instructions) {
+    instructions.remove();
+  }
 }
 
 async function fetchYouTubeSubtitles(): Promise<void> {
@@ -202,11 +460,11 @@ function updatePreview(text: string): void {
 }
 
 function handleSelectionChange(): void {
-  if (currentMode !== 'selection') return;
-
   const selection = window.getSelection();
   if (!selection) {
-    clearPreview();
+    if (currentMode === 'selection') {
+      clearPreview();
+    }
     return;
   }
 
@@ -216,20 +474,23 @@ function handleSelectionChange(): void {
     return;
   }
 
-  // Only clear if the selection is actually empty
-  if (selection.isCollapsed && !lastSelection) {
-    clearPreview();
-    return;
-  }
-
   // Get the selected text
   const selectedText = selection.toString().trim();
   
-  // Only update if there's actual text selected or if we're clearing an existing selection
+  // Always update lastSelection for any text selection
   if (selectedText) {
-    updatePreview(selectedText);
-  } else if (!selectedText && lastSelection) {
-    clearPreview();
+    lastSelection = selectedText;
+    // Only update UI preview if in selection mode
+    if (currentMode === 'selection') {
+      updatePreview(selectedText);
+    }
+  } else if (!selectedText) {
+    // Clear lastSelection when no text is selected
+    lastSelection = '';
+    // Only update UI preview if in selection mode
+    if (currentMode === 'selection') {
+      clearPreview();
+    }
   }
 }
 
@@ -324,6 +585,23 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
         ? lastSelection.substring(0, 50) + '...'
         : lastSelection
       : 'No text selected. Select some text on the page to analyze it.';
+  } else if (mode === 'element') {
+    if (selectedElementText) {
+      updateElementPreview();
+    } else {
+      preview.innerHTML = `
+        <div class="element-selection-prompt">
+          <p>Click the button below to select an element on the page</p>
+          <button class="start-element-selection-btn">Select Element</button>
+        </div>
+      `;
+      
+      // Add event listener to start selection button
+      const startBtn = preview.querySelector('.start-element-selection-btn');
+      startBtn?.addEventListener('click', () => {
+        startElementSelection();
+      });
+    }
   } else if (mode === 'youtube') {
     await updateYouTubeUI(preview);
   }
@@ -362,6 +640,17 @@ export function setupContextModes(): void {
       currentMode = mode;
       if (mode !== 'screenshot') {
         currentScreenshot = null;
+      }
+      if (mode !== 'element') {
+        // Clear element selection when switching away from element mode
+        selectedElementText = '';
+        selectedElement = null;
+        try {
+          sessionStorage.removeItem('ai-selected-element-text');
+          sessionStorage.removeItem('ai-selected-element-path');
+        } catch (error) {
+          console.warn('Could not clear element selection from sessionStorage:', error);
+        }
       }
       updateHighlight(index, sliderHighlight);
       updateModeUI(mode, screenshotBtn, dropZone, contentPreview).catch(error => {
@@ -490,6 +779,12 @@ function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
 export function getPageContent(): string {
   switch (currentMode) {
     case 'page':
+      // Check if there's any selected text first, use that if available
+      const currentSelection = window.getSelection()?.toString()?.trim();
+      if (currentSelection) {
+        return currentSelection;
+      }
+      
       // Get page content excluding the sidebar
       const sidebar = document.getElementById('ai-page-reader-sidebar');
       if (sidebar) {
@@ -509,6 +804,36 @@ export function getPageContent(): string {
       return lastSelection || window.getSelection()?.toString() || '';
     case 'screenshot':
       return currentScreenshot || '';
+    case 'element':
+      // First try the in-memory variable
+      if (selectedElementText) {
+        return selectedElementText;
+      }
+      
+      // If empty, try to recover from sessionStorage
+      try {
+        const storedText = sessionStorage.getItem('ai-selected-element-text');
+        if (storedText) {
+          selectedElementText = storedText;
+          return storedText;
+        }
+        
+        // If no stored text, try to re-extract from stored element path
+        const storedPath = sessionStorage.getItem('ai-selected-element-path');
+        if (storedPath) {
+          const element = document.querySelector(storedPath) as HTMLElement;
+          if (element) {
+            selectedElementText = extractElementText(element);
+            selectedElement = element;
+            sessionStorage.setItem('ai-selected-element-text', selectedElementText);
+            return selectedElementText;
+          }
+        }
+      } catch (error) {
+        console.warn('Could not recover element selection from sessionStorage:', error);
+      }
+      
+      return 'No element selected';
     case 'youtube':
       return youtubeSubtitles || 'No YouTube subtitles available';
     default:

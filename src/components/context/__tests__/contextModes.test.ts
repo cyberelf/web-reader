@@ -30,11 +30,13 @@ describe('Context Modes', () => {
     // Setup DOM elements
     container = document.createElement('div');
     container.innerHTML = `
-      <div class="slider-container">
-        <div class="slider-option" data-mode="page">Full Page</div>
-        <div class="slider-option" data-mode="selection">Selection</div>
-        <div class="slider-option" data-mode="screenshot">Screenshot</div>
-        <div class="slider-highlight"></div>
+      <div class="ai-slider-container">
+        <div class="ai-slider-option" data-mode="page">Full Page</div>
+        <div class="ai-slider-option" data-mode="selection">Selection</div>
+        <div class="ai-slider-option" data-mode="element">Element</div>
+        <div class="ai-slider-option" data-mode="screenshot">Screenshot</div>
+        <div class="ai-slider-option" data-mode="youtube">YouTube</div>
+        <div class="ai-slider-highlight"></div>
       </div>
       <button id="ai-screenshot-btn">Take Screenshot</button>
       <div id="ai-drop-zone">Drop zone</div>
@@ -46,8 +48,8 @@ describe('Context Modes', () => {
     // Get elements
     contentPreview = document.getElementById('ai-content-preview') as HTMLDivElement;
     screenshotBtn = document.getElementById('ai-screenshot-btn') as HTMLButtonElement;
-    options = document.querySelectorAll('.slider-option');
-    highlight = document.querySelector('.slider-highlight') as HTMLElement;
+    options = document.querySelectorAll('.ai-slider-option');
+    highlight = document.querySelector('.ai-slider-highlight') as HTMLElement;
 
     // Add toggle button and sidebar
     toggleButton = document.createElement('button');
@@ -89,9 +91,14 @@ describe('Context Modes', () => {
       expect(highlight.style.transform).toBe('translateX(100%)');
       expect(screenshotBtn.classList.contains('hidden')).toBe(true);
 
-      // Click screenshot mode
+      // Click element mode
       options[2].dispatchEvent(new Event('click'));
       expect(highlight.style.transform).toBe('translateX(200%)');
+      expect(screenshotBtn.classList.contains('hidden')).toBe(true);
+
+      // Click screenshot mode
+      options[3].dispatchEvent(new Event('click'));
+      expect(highlight.style.transform).toBe('translateX(300%)');
       expect(screenshotBtn.classList.contains('hidden')).toBe(false);
     });
 
@@ -100,7 +107,7 @@ describe('Context Modes', () => {
       jest.advanceTimersByTime(100);
 
       // Switch to screenshot mode first
-      options[2].dispatchEvent(new Event('click'));
+      options[3].dispatchEvent(new Event('click'));
 
       // Take screenshot
       const screenshotPromise = new Promise<void>((resolve) => {
@@ -140,8 +147,13 @@ describe('Context Modes', () => {
       expect(getPageContent()).toBe('Selected text');
     });
 
+    it('should return element text in element mode', () => {
+      options[2].dispatchEvent(new Event('click')); // Switch to element mode
+      expect(getPageContent()).toBe('No element selected');
+    });
+
     it('should return screenshot data in screenshot mode', async () => {
-      options[2].dispatchEvent(new Event('click')); // Switch to screenshot mode
+      options[3].dispatchEvent(new Event('click')); // Switch to screenshot mode
 
       // Take screenshot
       const screenshotPromise = new Promise<void>((resolve) => {
