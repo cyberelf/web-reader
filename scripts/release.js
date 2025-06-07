@@ -50,7 +50,7 @@ if (!/^\d+\.\d+\.\d+$/.test(releaseId)) {
 }
 
 // Validate new version is greater than current version
-if (compareVersions(releaseId, currentVersion) <= 0) {
+if (compareVersions(releaseId, currentVersion) < 0) {
   console.error(`New version ${releaseId} must be greater than current version ${currentVersion}`);
   process.exit(1);
 }
