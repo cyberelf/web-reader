@@ -40,7 +40,8 @@ label {
 #gemini-url,
 #custom-api-key,
 #custom-url,
-#custom-name {
+#custom-name,
+#language-selector {
   width: 100%;
   padding: 6px 8px;
   border: 1px solid #cbd5e1;
@@ -62,7 +63,8 @@ label {
 #gemini-url:focus,
 #custom-api-key:focus,
 #custom-url:focus,
-#custom-name:focus {
+#custom-name:focus,
+#language-selector:focus {
   outline: none;
   border-color: #2962ff;
   box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.1);

@@ -3,6 +3,7 @@
 
 <head>
   <title>Web Reader Settings</title>
+  <meta charset="UTF-8">
   <link rel="stylesheet" href="settings.css">
 </head>
 
@@ -242,6 +243,13 @@
 
       <!-- Settings Tab -->
       <div class="tab-pane" id="settings-tab">
+        <div class="setting-group">
+          <label for="language-selector">Language</label>
+          <select id="language-selector">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
         <div class="setting-group">
           <div class="toggle-group">
             <label for="show-icon">Show Icon</label>

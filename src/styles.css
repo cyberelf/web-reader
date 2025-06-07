@@ -944,6 +944,7 @@
 } */
 
 .subtitles-preview {
+  position: relative;
   margin-top: 4px;
   padding: 8px;
   background: var(--bg-secondary, #f8fafc);
@@ -962,6 +963,134 @@
   border-color: var(--border, #334155);
   color: var(--text, #e2e8f0);
 } */
+
+/* Video Mode Styles */
+.subtitle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--light-border);
+}
+
+.subtitle-header small {
+  color: var(--light-text);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.subtitle-content {
+  color: var(--text);
+  line-height: 1.4;
+  padding-right: 24px;
+}
+
+.video-loading {
+  text-align: center;
+  padding: 20px 12px;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 6px;
+  border: 1px solid var(--light-border);
+}
+
+.video-loading p {
+  margin: 0 0 8px 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.video-loading small {
+  color: var(--light-text);
+  display: block;
+  margin-bottom: 12px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--light-border);
+  border-top: 2px solid var(--button-bg);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.video-mode-message {
+  padding: 16px 12px;
+  text-align: center;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 6px;
+  border: 1px solid var(--light-border);
+}
+
+.video-mode-message p {
+  margin: 0 0 8px 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.video-mode-message small {
+  color: var(--light-text);
+  font-size: 12px;
+}
+
+.video-error-message {
+  padding: 12px;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 6px;
+  border: 1px solid var(--light-border);
+}
+
+.video-error-message p {
+  margin: 0 0 12px 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.video-error-message small {
+  color: var(--light-text);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.video-error-message ul {
+  margin: 8px 0 12px 0;
+  padding-left: 20px;
+  color: var(--light-text);
+  font-size: 13px;
+}
+
+.video-error-message li {
+  margin-bottom: 4px;
+}
+
+.refresh-subtitles {
+  background: var(--button-bg);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.refresh-subtitles:hover {
+  background: var(--button-hover-bg);
+}
 
 #ai-page-reader-sidebar .ai-theme-toggle {
   background: none;

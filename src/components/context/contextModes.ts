@@ -1,11 +1,13 @@
 /// <reference types="chrome"/>
 
-type ContextMode = 'page' | 'selection' | 'screenshot' | 'youtube' | 'element';
+import { t } from '../../utils/i18n';
+
+type ContextMode = 'page' | 'selection' | 'screenshot' | 'video' | 'element';
 
 let currentMode: ContextMode = 'page';
 let currentScreenshot: string | null = null;
 let lastSelection: string = '';
-let youtubeSubtitles: string = '';
+let videoSubtitles: string = '';
 let contentPreviewElement: HTMLElement | null = null;
 let isElementSelectionActive: boolean = false;
 let selectedElement: HTMLElement | null = null;
@@ -40,6 +42,28 @@ interface SubtitleResponse {
   events: SubtitleEvent[];
 }
 
+// Bilibili subtitle interfaces - Updated based on actual API response
+interface BilibiliSubtitleItem {
+  from: number;
+  to: number;
+  sid: number;
+  location: number;
+  content: string;
+  music: number;
+}
+
+interface BilibiliSubtitleData {
+  font_size: number;
+  font_color: string;
+  background_alpha: number;
+  background_color: string;
+  Stroke: string;
+  type: string;
+  lang: string;
+  version: string;
+  body: BilibiliSubtitleItem[];
+}
+
 function displayImage(src: string, container: HTMLElement | null): void {
   if (!container) return;
 
@@ -67,6 +91,16 @@ function displayImage(src: string, container: HTMLElement | null): void {
 
 function isYouTubePage(): boolean {
   return window.location.hostname === 'www.youtube.com' && window.location.pathname.includes('/watch');
+}
+
+function isBilibiliPage(): boolean {
+  return window.location.hostname === 'www.bilibili.com' && 
+         (window.location.pathname.includes('/video/') || 
+          window.location.pathname.includes('/medialist/play/'));
+}
+
+function isVideoPage(): boolean {
+  return isYouTubePage() || isBilibiliPage();
 }
 
 function downloadText(text: string, filename: string): void {
@@ -268,11 +302,11 @@ function updateElementPreview(): void {
     contentPreviewElement.innerHTML = `
       <div class="element-selection-preview">
         <div class="element-info">
-          <strong>Selected Element:</strong> ${selectedElement?.tagName.toLowerCase() || 'unknown'}
+          <strong>${t('sidebar.preview.selectedElement')}:</strong> ${selectedElement?.tagName.toLowerCase() || 'unknown'}
           ${selectedElement?.className ? `<span class="element-class">.${selectedElement.className.split(' ')[0]}</span>` : ''}
         </div>
         <div class="element-text">${preview}</div>
-        <button class="reselect-element-btn">Select Different Element</button>
+        <button class="reselect-element-btn">${t('sidebar.preview.reselectElement')}</button>
       </div>
     `;
     
@@ -341,7 +375,7 @@ async function fetchYouTubeSubtitles(): Promise<void> {
         subtitleButton: !!subtitleButton,
         video: !!video
       });
-      youtubeSubtitles = 'YouTube player elements not found';
+      videoSubtitles = 'YouTube player elements not found';
       return;
     }
 
@@ -430,22 +464,377 @@ async function fetchYouTubeSubtitles(): Promise<void> {
         .join(' ');
 
       console.log('Final subtitles length:', subtitlesContent?.length);
-      youtubeSubtitles = subtitlesContent || 'No subtitles content found';
+      videoSubtitles = subtitlesContent || 'No subtitles content found';
 
     } catch (error) {
       console.error('Failed to parse subtitles JSON:', error);
-      youtubeSubtitles = 'Failed to parse subtitles';
+      videoSubtitles = 'Failed to parse subtitles';
     }
 
   } catch (error) {
     console.error('Failed to fetch YouTube subtitles:', error);
-    youtubeSubtitles = 'Failed to load subtitles';
+    videoSubtitles = 'Failed to load subtitles';
+  }
+}
+
+async function fetchBilibiliSubtitles(): Promise<void> {
+  if (!isBilibiliPage()) return;
+
+  try {
+    console.log('Starting Bilibili subtitles fetch...');
+    
+    // Wait for page to be fully loaded
+    await new Promise(resolve => {
+      if (document.readyState === 'complete') {
+        resolve(void 0);
+      } else {
+        window.addEventListener('load', () => resolve(void 0), { once: true });
+      }
+    });
+
+    // Additional wait for dynamic content
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Try multiple selectors for Bilibili video player
+    const playerSelectors = [
+      '.bpx-player-container',
+      '.bilibili-player-video-wrap',
+      '.bilibili-player',
+      '.player-wrap',
+      '.bpx-player'
+    ];
+    
+    const videoSelectors = [
+      'video',
+      '.bpx-player-video video',
+      '.bilibili-player-video video'
+    ];
+
+    let player: Element | null = null;
+    let video: Element | null = null;
+
+    // Try to find player with multiple selectors
+    for (const selector of playerSelectors) {
+      player = document.querySelector(selector);
+      if (player) {
+        console.log('Found player with selector:', selector);
+        break;
+      }
+    }
+
+    // Try to find video with multiple selectors
+    for (const selector of videoSelectors) {
+      video = document.querySelector(selector);
+      if (video) {
+        console.log('Found video with selector:', selector);
+        break;
+      }
+    }
+    
+    if (!player || !video) {
+      console.error('Missing Bilibili elements:', {
+        player: !!player,
+        video: !!video,
+        url: window.location.href,
+        readyState: document.readyState
+      });
+      
+      // Try alternative detection method
+      const hasVideoInUrl = window.location.pathname.includes('/video/');
+      const hasPlayerElements = document.querySelector('video') !== null;
+      
+      if (hasVideoInUrl && hasPlayerElements) {
+        console.log('Using fallback detection for Bilibili');
+        // Continue with subtitle extraction using available elements
+      } else {
+        videoSubtitles = 'Bilibili player elements not found. Please ensure the video page is fully loaded.';
+        return;
+      }
+    }
+
+    // Set up request interception for manual subtitle activation
+    console.log('🎯 Ready to capture Bilibili subtitle requests...');
+    console.log('👆 Please manually click the subtitle button (CC/字幕) on the video player');
+
+    // Create a promise to capture subtitle requests with multiple approaches
+    const subtitleRequestPromise = new Promise<string>((resolve, reject) => {
+      console.log('Setting up Bilibili subtitle observer...');
+      
+      // Check multiple URL patterns for subtitle requests
+      const subtitleUrlPatterns = [
+        'aisubtitle.hdslb.com',
+        'i0.hdslb.com/bfs/subtitle',
+        'hdslb.com/bfs/ai_subtitle',
+        'bfs/ai_subtitle',
+        'bfs/subtitle'
+      ];
+      
+      // Enhanced logging for debugging
+      console.log('🔍 Starting request monitoring for manual subtitle activation...');
+      console.log('🎯 Will capture requests matching:', subtitleUrlPatterns);
+
+      let requestCaptured = false;
+      
+      // Method 1: PerformanceObserver
+      const observer = new PerformanceObserver((list) => {
+        if (requestCaptured) return;
+        
+        const entries = list.getEntries();
+        
+        for (const entry of entries) {
+          const url = (entry as PerformanceResourceTiming).name;
+          
+          const matchesPattern = subtitleUrlPatterns.some(pattern => 
+            url.includes(pattern)
+          );
+          
+          if (matchesPattern) {
+            console.log('🎯 Subtitle request found:', url);
+            requestCaptured = true;
+            observer.disconnect();
+            
+            fetch(url, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': navigator.userAgent
+              },
+              credentials: 'omit'
+            })
+              .then(response => {
+                console.log('📡 Response status:', response.status, response.statusText);
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.text();
+              })
+              .then(text => {
+                console.log('✅ Subtitle response received, length:', text.length);
+                if (text.includes('字幕样式测试') || text.includes('字幕设置')) {
+                  console.log('⚠️ Received placeholder subtitle response, continuing to monitor...');
+                  requestCaptured = false; // Reset to continue monitoring
+                  return;
+                }
+                resolve(text);
+              })
+              .catch(error => {
+                console.error('❌ Error fetching subtitle response:', error);
+                requestCaptured = false; // Reset to continue monitoring
+              });
+            return;
+          }
+        }
+      });
+
+      observer.observe({ entryTypes: ['resource'] });
+
+      // Method 2: Fetch override
+      const originalFetch = window.fetch;
+      const fetchOverride = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const url = typeof input === 'string' ? input : input.toString();
+        
+        // Check if this is a subtitle request
+        const isSubtitleRequest = subtitleUrlPatterns.some(pattern => url.includes(pattern));
+        
+        if (isSubtitleRequest && !requestCaptured) {
+          console.log('🎯 Subtitle request intercepted via fetch:', url);
+          requestCaptured = true;
+          observer.disconnect();
+          window.fetch = originalFetch; // Restore original fetch
+          
+          // Update UI to show we're processing
+          const videoPreview = document.querySelector('.video-loading');
+          if (videoPreview) {
+            videoPreview.innerHTML = `
+              <div class="video-loading">
+                <p>Processing Bilibili subtitles...</p>
+                <small>Subtitle request detected</small>
+                <div class="loading-spinner"></div>
+              </div>
+            `;
+          }
+          
+          // Let the original request proceed and capture its response
+          try {
+            const response = await originalFetch(input, init);
+            const responseClone = response.clone();
+            const text = await responseClone.text();
+            console.log('✅ Fetch subtitle response intercepted, length:', text.length);
+            
+            // Check for placeholder content
+            if (text.includes('字幕样式测试') || text.includes('字幕设置')) {
+              console.log('⚠️ Received placeholder subtitle response via fetch, continuing to monitor...');
+              requestCaptured = false; // Reset to continue monitoring
+              window.fetch = fetchOverride; // Keep monitoring
+              return response;
+            }
+            
+            resolve(text);
+            return response; // Return original response to not break the page
+          } catch (error) {
+            console.error('❌ Error intercepting fetch subtitle response:', error);
+            requestCaptured = false; // Reset to continue monitoring
+            window.fetch = fetchOverride; // Keep monitoring
+            return originalFetch(input, init); // Fallback to original fetch
+          }
+        }
+        
+        return originalFetch(input, init);
+      };
+      
+      window.fetch = fetchOverride;
+
+      // Method 3: XMLHttpRequest interception
+      const originalXHROpen = XMLHttpRequest.prototype.open;
+      const originalXHRSend = XMLHttpRequest.prototype.send;
+      
+      XMLHttpRequest.prototype.open = function(this: XMLHttpRequest & { _interceptUrl?: string }, method: string, url: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
+        this._interceptUrl = url.toString();
+        return originalXHROpen.call(this, method, url, async, username, password);
+      };
+      
+      XMLHttpRequest.prototype.send = function(this: XMLHttpRequest & { _interceptUrl?: string }, body?: Document | XMLHttpRequestBodyInit | null) {
+        if (this._interceptUrl && !requestCaptured) {
+          const isSubtitleRequest = subtitleUrlPatterns.some(pattern => this._interceptUrl!.includes(pattern));
+          
+          if (isSubtitleRequest) {
+            console.log('🎯 Bilibili subtitle request intercepted via XHR:', this._interceptUrl);
+            requestCaptured = true;
+            observer.disconnect();
+            window.fetch = originalFetch;
+            
+            this.addEventListener('load', () => {
+              if (this.status === 200) {
+                console.log('✅ XHR subtitle response received, length:', this.responseText.length);
+                
+                // Check for placeholder content
+                if (this.responseText.includes('字幕样式测试') || this.responseText.includes('字幕设置')) {
+                  console.log('⚠️ Received placeholder subtitle response via XHR, continuing to monitor...');
+                  requestCaptured = false; // Reset to continue monitoring
+                  return;
+                }
+                
+                resolve(this.responseText);
+              } else {
+                reject(new Error(`XHR failed with status ${this.status}`));
+              }
+            });
+            
+            this.addEventListener('error', () => {
+              reject(new Error('XHR request failed'));
+            });
+          }
+        }
+        
+        return originalXHRSend.call(this, body);
+      };
+
+      // Extended timeout for manual clicking - giving users 30 seconds
+      setTimeout(() => {
+        observer.disconnect();
+        window.fetch = originalFetch; // Restore original fetch
+        XMLHttpRequest.prototype.open = originalXHROpen; // Restore original XHR
+        XMLHttpRequest.prototype.send = originalXHRSend;
+        if (!requestCaptured) {
+          reject(new Error('Bilibili subtitle request timeout - please try clicking the subtitle button again'));
+        }
+      }, 30000); // Extended to 30 seconds
+    });
+
+    // Wait for subtitle request or timeout
+    try {
+      const subtitlesText = await subtitleRequestPromise;
+      console.log('Parsing Bilibili subtitle JSON...');
+
+      const subtitlesJson = JSON.parse(subtitlesText) as BilibiliSubtitleData;
+      
+      if (subtitlesJson.body && Array.isArray(subtitlesJson.body)) {
+        // Sort by timestamp for proper order
+        const sortedSubtitles = subtitlesJson.body.sort((a, b) => a.from - b.from);
+        
+        const subtitlesContent = sortedSubtitles
+          .map((item: BilibiliSubtitleItem) => item.content)
+          .filter((content: string) => content && content.trim().length > 0)
+          .join(' ');
+
+        console.log('Final Bilibili subtitles length:', subtitlesContent.length);
+        console.log('Subtitle language:', subtitlesJson.lang);
+        console.log('Subtitle type:', subtitlesJson.type);
+        
+        if (subtitlesContent && subtitlesContent.length > 0) {
+          videoSubtitles = subtitlesContent;
+          console.log('✅ Bilibili subtitles successfully loaded, length:', subtitlesContent.length);
+          
+          // Refresh the UI immediately when subtitles are captured
+          const preview = document.getElementById('ai-content-preview');
+          if (preview && currentMode === 'video') {
+            await updateVideoUI(preview);
+          }
+        } else {
+          videoSubtitles = 'No subtitle content found in response';
+        }
+      } else {
+        console.log('Unexpected JSON structure, trying alternative parsing...');
+        // Try alternative JSON structure for different subtitle formats
+        if (subtitlesJson && typeof subtitlesJson === 'object') {
+          // Check if it's a different subtitle format
+          const jsonString = JSON.stringify(subtitlesJson);
+          if (jsonString.includes('content') && jsonString.length > 100) {
+            // Try to extract any content fields from the JSON
+            const contentMatches = jsonString.match(/"content":"([^"]+)"/g);
+            if (contentMatches && contentMatches.length > 0) {
+              const extractedContent = contentMatches
+                .map(match => match.replace(/"content":"([^"]+)"/, '$1'))
+                .join(' ');
+              videoSubtitles = extractedContent || 'Partial subtitle content extracted';
+              
+              // Refresh the UI immediately when subtitles are captured
+              const preview = document.getElementById('ai-content-preview');
+              if (preview && currentMode === 'video' && extractedContent) {
+                await updateVideoUI(preview);
+              }
+            } else {
+              videoSubtitles = 'Subtitles found but content could not be extracted';
+            }
+          } else {
+            videoSubtitles = 'No subtitle content found';
+          }
+        } else {
+          videoSubtitles = 'Invalid subtitle response format';
+        }
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch Bilibili subtitles via request interception:', error);
+      
+      // Only use request interception - no DOM extraction fallback
+      const hasVideo = document.querySelector('video') !== null;
+      if (hasVideo) {
+        videoSubtitles = 'No subtitle requests captured. Please click the subtitle button (CC/字幕) on the video player to enable subtitles, then try again.';
+      } else {
+        videoSubtitles = 'No video found on this page.';
+      }
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch Bilibili subtitles:', error);
+    videoSubtitles = 'Failed to load subtitles. Please ensure the page is fully loaded and try again.';
+  }
+}
+
+async function fetchVideoSubtitles(): Promise<void> {
+  if (isYouTubePage()) {
+    await fetchYouTubeSubtitles();
+  } else if (isBilibiliPage()) {
+    await fetchBilibiliSubtitles();
+  } else {
+    videoSubtitles = t('sidebar.preview.videoOnly');
   }
 }
 
 function clearPreview(): void {
   if (contentPreviewElement) {
-    contentPreviewElement.textContent = 'No text selected. Select some text on the page to analyze it.';
+    contentPreviewElement.textContent = t('sidebar.preview.noSelection');
   }
   lastSelection = '';
 }
@@ -512,36 +901,114 @@ function createDownloadButton(preview: HTMLElement): HTMLButtonElement {
     downloadButton.title = 'Download Subtitles';
     
     downloadButton.addEventListener('click', () => {
-      if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found') {
-        const videoTitle = document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent?.trim() || 'youtube_subtitles';
-        downloadText(youtubeSubtitles, `${videoTitle}.txt`);
+      if (videoSubtitles && videoSubtitles !== 'No subtitles content found') {
+        let videoTitle = 'video_subtitles';
+        
+        if (isYouTubePage()) {
+          videoTitle = document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent?.trim() || 'youtube_subtitles';
+        } else if (isBilibiliPage()) {
+          videoTitle = document.querySelector('.video-title, h1[title]')?.textContent?.trim() || 'bilibili_subtitles';
+        }
+        
+        downloadText(videoSubtitles, `${videoTitle}.txt`);
       }
     });
   }
   return downloadButton;
 }
 
-async function updateYouTubeUI(preview: HTMLElement): Promise<void> {
+async function updateVideoUI(preview: HTMLElement): Promise<void> {
   const downloadButton = createDownloadButton(preview);
 
-  if (!isYouTubePage()) {
-    preview.textContent = 'This mode only works on YouTube video pages';
+  if (!isVideoPage()) {
+    preview.innerHTML = `
+      <div class="video-mode-message">
+        <p>${t('sidebar.preview.videoOnly')}</p>
+        <small>Supports YouTube and Bilibili videos</small>
+      </div>
+    `;
     downloadButton.style.display = 'none';
     return;
   }
 
-  if (!youtubeSubtitles) {
-    preview.textContent = 'Loading YouTube subtitles...';
+  // Show loading state with video platform info
+  if (!videoSubtitles) {
+    const platform = isYouTubePage() ? 'YouTube' : isBilibiliPage() ? 'Bilibili' : 'Video';
+    
+    if (isBilibiliPage()) {
+      // For Bilibili, show clear manual instruction
+      preview.innerHTML = `
+        <div class="video-loading">
+          <p>Ready to capture ${platform} subtitles</p>
+          <small>👆 Click the subtitle button (CC/字幕) on the video player, then wait</small>
+          <div class="loading-spinner"></div>
+        </div>
+      `;
+    } else {
+      // For YouTube, show normal loading
+      preview.innerHTML = `
+        <div class="video-loading">
+          <p>${t('sidebar.preview.loading')}</p>
+          <small>Extracting ${platform} subtitles...</small>
+          <div class="loading-spinner"></div>
+        </div>
+      `;
+    }
+    
     downloadButton.style.display = 'none';
-    await fetchYouTubeSubtitles();
+    
+    try {
+      await fetchVideoSubtitles();
+      // After fetching, update the UI again with the results
+      await updateVideoUI(preview);
+    } catch (error) {
+      console.error('Error fetching video subtitles:', error);
+      videoSubtitles = 'Failed to load subtitles. Please try refreshing the page.';
+      // Update UI with error state
+      await updateVideoUI(preview);
+    }
+    return; // Exit early since we're recursively calling updateVideoUI
   }
 
-  if (youtubeSubtitles && youtubeSubtitles !== 'No subtitles content found' && youtubeSubtitles !== 'Failed to load subtitles') {
-    preview.innerHTML = `<div class="subtitles-preview">${youtubeSubtitles.substring(0, 200)}...</div>`;
+  // Handle different subtitle states
+  if (videoSubtitles && 
+      !videoSubtitles.includes('No subtitles content found') && 
+      !videoSubtitles.includes('Failed to load subtitles') &&
+      !videoSubtitles.includes('not found') &&
+      videoSubtitles !== t('sidebar.preview.videoOnly') &&
+      videoSubtitles.length > 10) {
+    
+    // Successfully loaded subtitles
+    const platform = isYouTubePage() ? 'YouTube' : 'Bilibili';
+    preview.innerHTML = `
+      <div class="subtitles-preview">
+        <div class="subtitle-header">
+          <small>${platform} Subtitles (${videoSubtitles.length} chars)</small>
+        </div>
+        <div class="subtitle-content">${videoSubtitles.substring(0, 200)}${videoSubtitles.length > 200 ? '...' : ''}</div>
+      </div>
+    `;
     preview.appendChild(downloadButton);
     downloadButton.style.display = 'flex';
+    
+    console.log('✅ Subtitles loaded and UI updated with download button');
   } else {
-    preview.textContent = youtubeSubtitles || 'No subtitles available';
+    // Failed to load or no subtitles
+    const platform = isYouTubePage() ? 'YouTube' : 'Bilibili';
+    const refreshButton = `<button class="refresh-subtitles" onclick="this.parentElement.innerHTML='Loading...'; setTimeout(() => location.reload(), 500)">Refresh</button>`;
+    
+    preview.innerHTML = `
+      <div class="video-error-message">
+        <p>${videoSubtitles || t('sidebar.preview.noSubtitles')}</p>
+        <small>For ${platform} videos, try:</small>
+        <ul>
+          <li>Enabling subtitles on the video</li>
+          <li>Waiting for the page to fully load</li>
+          <li>Refreshing the page</li>
+        </ul>
+        ${refreshButton}
+      </div>
+    `;
     downloadButton.style.display = 'none';
   }
 }
@@ -584,15 +1051,15 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
       ? lastSelection.length > 50 
         ? lastSelection.substring(0, 50) + '...'
         : lastSelection
-      : 'No text selected. Select some text on the page to analyze it.';
+      : t('sidebar.preview.noSelection');
   } else if (mode === 'element') {
     if (selectedElementText) {
       updateElementPreview();
     } else {
       preview.innerHTML = `
         <div class="element-selection-prompt">
-          <p>Click the button below to select an element on the page</p>
-          <button class="start-element-selection-btn">Select Element</button>
+          <p>${t('sidebar.preview.selectElement')}</p>
+          <button class="start-element-selection-btn">${t('sidebar.preview.selectElement')}</button>
         </div>
       `;
       
@@ -602,8 +1069,8 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
         startElementSelection();
       });
     }
-  } else if (mode === 'youtube') {
-    await updateYouTubeUI(preview);
+  } else if (mode === 'video') {
+    await updateVideoUI(preview);
   }
 }
 
@@ -776,6 +1243,18 @@ function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
   });
 }
 
+// Function to clear video subtitle cache for new pages
+export function clearVideoSubtitles(): void {
+  videoSubtitles = '';
+  console.log('Video subtitles cache cleared for new page');
+}
+
+// Export function to force refresh video subtitles
+export function refreshVideoSubtitles(): Promise<void> {
+  videoSubtitles = '';
+  return fetchVideoSubtitles();
+}
+
 export function getPageContent(): string {
   switch (currentMode) {
     case 'page':
@@ -833,9 +1312,9 @@ export function getPageContent(): string {
         console.warn('Could not recover element selection from sessionStorage:', error);
       }
       
-      return 'No element selected';
-    case 'youtube':
-      return youtubeSubtitles || 'No YouTube subtitles available';
+      return t('sidebar.preview.selectElement');
+    case 'video':
+      return videoSubtitles || t('sidebar.preview.noSubtitles');
     default:
       return '';
   }

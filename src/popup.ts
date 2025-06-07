@@ -1,6 +1,7 @@
 /// <reference types="chrome"/>
 
 import { modelManager, type ModelInfo, type ProviderConfig } from './utils/modelManager';
+import { initializeLanguage, setLanguage, getLanguage, t, Language } from './utils/i18n';
 
 interface TokenUsage {
   totalTokens: number;
@@ -12,6 +13,8 @@ let isInitialized = false;
 
 // Initialize the popup
 document.addEventListener('DOMContentLoaded', async () => {
+  await initializeLanguage();
+  updateTranslations();
   await initializeModelManager();
   initializeTabs();
   initializeProviderManagement();
@@ -22,6 +25,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   isInitialized = true;
 });
+
+function updateTranslations(): void {
+  document.title = t('settings.title');
+  
+  // Update tab buttons
+  const tabs = {
+    'model': 'settings.model',
+    'prompt': 'settings.prompts', 
+    'settings': 'settings.settings',
+    'stats': 'settings.stats'
+  };
+  
+  Object.entries(tabs).forEach(([tab, key]) => {
+    const button = document.querySelector(`[data-tab="${tab}"]`);
+    if (button) button.textContent = t(key);
+  });
+  
+  // Update labels and buttons
+  const languageLabel = document.querySelector('label[for="language-selector"]');
+  if (languageLabel) languageLabel.textContent = t('settings.language');
+  
+  const showIconLabel = document.querySelector('label[for="show-icon"]');
+  if (showIconLabel) showIconLabel.textContent = t('settings.showIcon');
+  
+  const saveButton = document.querySelector('.save-button');
+  if (saveButton) saveButton.textContent = t('settings.saveSettings');
+  
+  const providerLabel = document.querySelector('label[for="provider-selector"]');
+  if (providerLabel) providerLabel.textContent = t('settings.provider');
+  
+  // Update API key labels
+  const apiKeyLabels = document.querySelectorAll('label[for*="-api-key"]');
+  apiKeyLabels.forEach(label => {
+    label.textContent = t('settings.apiKey');
+  });
+  
+  const apiUrlLabels = document.querySelectorAll('label[for*="-url"]');
+  apiUrlLabels.forEach(label => {
+    label.textContent = t('settings.apiUrl');
+  });
+}
 
 async function initializeModelManager(): Promise<void> {
   try {
@@ -619,36 +663,55 @@ function saveManualModel(): void {
 
 function initializeSettings(): void {
   const showIconCheckbox = document.getElementById('show-icon') as HTMLInputElement;
+  const languageSelector = document.getElementById('language-selector') as HTMLSelectElement;
   const saveButton = document.querySelector('.save-button') as HTMLButtonElement;
   
-  // Load show icon setting
-  chrome.storage.sync.get(['showIcon'], (result) => {
+  // Load settings
+  chrome.storage.sync.get(['showIcon', 'language'], (result) => {
     if (showIconCheckbox) {
       showIconCheckbox.checked = result.showIcon !== false; // Default to true
     }
+    
+    if (languageSelector) {
+      languageSelector.value = result.language || getLanguage();
+    }
   });
+  
+  // Handle language change
+  if (languageSelector) {
+    languageSelector.addEventListener('change', () => {
+      const selectedLanguage = languageSelector.value as Language;
+      setLanguage(selectedLanguage);
+      updateTranslations();
+    });
+  }
   
   // Save settings
   if (saveButton) {
     saveButton.addEventListener('click', async () => {
       const showIcon = showIconCheckbox?.checked !== false;
+      const language = languageSelector?.value || getLanguage();
       
-      await chrome.storage.sync.set({ showIcon });
+      await chrome.storage.sync.set({ showIcon, language });
       
       // Show success message
       const originalText = saveButton.textContent;
-      saveButton.textContent = 'Saved!';
+      saveButton.textContent = t('settings.saved');
       saveButton.classList.add('saved');
       
       setTimeout(() => {
-        saveButton.textContent = originalText || 'Save Settings';
+        saveButton.textContent = originalText || t('settings.saveSettings');
         saveButton.classList.remove('saved');
       }, 2000);
       
-      // Send message to content script to update icon visibility
+      // Send message to content script to update icon visibility and language
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'updateIconVisibility', showIcon }, (response) => {
+          chrome.tabs.sendMessage(tabs[0].id, { 
+            action: 'updateSettings', 
+            showIcon, 
+            language 
+          }, (response) => {
             // Handle the response or error silently
             if (chrome.runtime.lastError) {
               // Content script not available on this page (e.g., chrome:// pages)

@@ -9,6 +9,7 @@ import { ShortcutHandler } from '../chat/shortcutHandler';
 import { handleQuestion } from '../chat/messageHandler';
 import { clearChatHistory } from '../chat/chatHistory';
 import { modelManager } from '../../utils/modelManager';
+import { initializeLanguage, t } from '../../utils/i18n';
 
 interface Position {
   x: number;
@@ -247,7 +248,10 @@ export function setupToggleButton(toggleButton: HTMLButtonElement): void {
   });
 }
 
-export function createSidebar(): void {
+export async function createSidebar(): Promise<void> {
+  // Initialize language first
+  await initializeLanguage();
+  
   // Check if elements already exist
   let sidebar = document.getElementById('ai-page-reader-sidebar');
   let toggleButton = document.getElementById('ai-page-reader-toggle') as HTMLButtonElement | null;
@@ -262,75 +266,80 @@ export function createSidebar(): void {
   sidebar = document.createElement('div');
   sidebar.id = 'ai-page-reader-sidebar';
   
-  sidebar.innerHTML = `
-    <div class="ai-sidebar-container">
-      <div class="ai-sidebar-header">
-        <h2>Page Reader Assistant</h2>
-        <div class="ai-header-controls">
-          <button id="ai-theme-toggle" class="ai-theme-toggle" aria-label="Toggle theme">
-            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="5"></circle>
-              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-            </svg>
-            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </button>
-          <button class="ai-sidebar-close-button" aria-label="Close sidebar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+  // Create sidebar with translations
+  function createSidebarHTML(): string {
+    return `
+      <div class="ai-sidebar-container">
+        <div class="ai-sidebar-header">
+          <h2>${t('sidebar.title')}</h2>
+          <div class="ai-header-controls">
+            <button id="ai-theme-toggle" class="ai-theme-toggle" aria-label="Toggle theme">
+              <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+              </svg>
+              <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+            <button class="ai-sidebar-close-button" aria-label="${t('common.close')}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="ai-context-controls">
-        <div class="ai-context-header">
-          <div class="ai-context-mode-wrapper">
-            <div class="ai-slider-container">
-              <div class="ai-slider-option" data-mode="page">Page</div>
-              <div class="ai-slider-option" data-mode="selection">Selection</div>
-              <div class="ai-slider-option" data-mode="element">Element</div>
-              <div class="ai-slider-option" data-mode="screenshot">Screenshot</div>
-              <div class="ai-slider-option" data-mode="youtube">YouTube</div>
-              <div class="ai-slider-highlight"></div>
+        <div class="ai-context-controls">
+          <div class="ai-context-header">
+            <div class="ai-context-mode-wrapper">
+              <div class="ai-slider-container">
+                <div class="ai-slider-option" data-mode="page">${t('sidebar.modes.page')}</div>
+                <div class="ai-slider-option" data-mode="selection">${t('sidebar.modes.selection')}</div>
+                <div class="ai-slider-option" data-mode="element">${t('sidebar.modes.element')}</div>
+                <div class="ai-slider-option" data-mode="screenshot">${t('sidebar.modes.screenshot')}</div>
+                <div class="ai-slider-option" data-mode="video">${t('sidebar.modes.video')}</div>
+                <div class="ai-slider-highlight"></div>
+              </div>
+            </div>
+            <button id="ai-screenshot-btn" class="hidden" aria-label="Take Screenshot">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+          </div>
+          <div id="ai-context-area">
+            <div id="ai-content-preview"></div>
+            <div id="ai-drop-zone" class="hidden">
+              <p>${t('sidebar.preview.dropImage')}</p>
+              <input type="file" id="ai-file-input" accept="image/*" hidden>
             </div>
           </div>
-          <button id="ai-screenshot-btn" class="hidden" aria-label="Take Screenshot">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </button>
         </div>
-        <div id="ai-context-area">
-          <div id="ai-content-preview"></div>
-          <div id="ai-drop-zone" class="hidden">
-            <p>Take a screenshot or drag and drop an image here</p>
-            <input type="file" id="ai-file-input" accept="image/*" hidden>
+        <div id="ai-answer"></div>
+        <div class="ai-input-section">
+          <textarea id="ai-question" placeholder="${t('sidebar.askPlaceholder')}" rows="4"></textarea>
+          <div class="ai-bottom-controls">
+            <button id="ai-ask-button">${t('sidebar.askButton')}</button>
+            <select id="ai-model-selector" class="ai-model-selector"></select>
+          </div>
+        </div>
+        <div class="ai-modal" id="ai-clear-confirm-modal">
+          <div class="ai-modal-content">
+            <h3>${t('sidebar.clearHistory')}</h3>
+            <p>${t('sidebar.clearHistoryMessage')}</p>
+            <div class="ai-modal-actions">
+              <button class="ai-modal-button ai-cancel-button">${t('common.cancel')}</button>
+              <button class="ai-modal-button ai-confirm-button">${t('sidebar.clearHistoryConfirm')}</button>
+            </div>
           </div>
         </div>
       </div>
-      <div id="ai-answer"></div>
-      <div class="ai-input-section">
-        <textarea id="ai-question" placeholder="What would you like to know about this page?" rows="4"></textarea>
-        <div class="ai-bottom-controls">
-          <button id="ai-ask-button">Ask Question</button>
-          <select id="ai-model-selector" class="ai-model-selector"></select>
-        </div>
-      </div>
-      <div class="ai-modal" id="ai-clear-confirm-modal">
-        <div class="ai-modal-content">
-          <h3>Clear Chat History</h3>
-          <p>Are you sure you want to clear the chat history for this page?</p>
-          <div class="ai-modal-actions">
-            <button class="ai-modal-button ai-cancel-button">Cancel</button>
-            <button class="ai-modal-button ai-confirm-button">Clear History</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+    `;
+  }
+
+  sidebar.innerHTML = createSidebarHTML();
   document.body.appendChild(sidebar);
 
   // Setup toggle button if it exists
