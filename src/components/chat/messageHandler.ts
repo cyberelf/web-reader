@@ -7,6 +7,7 @@ import { createAPIClient, type LLMRequest, type APIError } from '../../utils/api
 import { createRateLimiter, type RateLimiter } from '../../utils/rateLimiter';
 import { modelManager } from '../../utils/modelManager';
 import type { ModelType } from '../../config';
+import { estimateSimpleTokens } from '../../utils/tokenCounter';
 
 interface TokenUsage {
   totalTokens: number;
@@ -71,8 +72,8 @@ function createUserFriendlyErrorMessage(error: APIError): string {
   }
 }
 
-function estimateTokens(messages: any[]): number {
-  // Rough estimation: 1 token ≈ 4 characters for text
+async function estimateTokensFromMessages(messages: any[], model: string): Promise<number> {
+  // Use fallback estimation for now to avoid async complexity in rate limiting
   let totalChars = 0;
   
   for (const message of messages) {
@@ -83,14 +84,12 @@ function estimateTokens(messages: any[]): number {
         if (item.type === 'text' && item.text) {
           totalChars += item.text.length;
         } else if (item.type === 'image_url') {
-          // Images typically use more tokens, estimate based on resolution
-          totalChars += 1000; // Base estimate for image processing
+          totalChars += 4000; // Estimate for image tokens (roughly 1000 tokens * 4 chars/token)
         }
       }
     }
   }
   
-  // Add some buffer for response tokens and system overhead
   return Math.ceil(totalChars / 4) + 1000;
 }
 
@@ -168,7 +167,7 @@ export async function handleQuestion(question: string, context: string, model?: 
     // Check rate limits before making the request
     const apiUrl = config.apiUrl;
     const limiter = getRateLimiter(apiUrl);
-    const estimatedTokens = estimateTokens(messages);
+    const estimatedTokens = await estimateTokensFromMessages(messages, selectedModel);
     
     const rateLimitCheck = await limiter.canMakeRequest(estimatedTokens);
     if (!rateLimitCheck.allowed) {

@@ -84,9 +84,17 @@ function displayImage(src: string, container: HTMLElement | null): void {
           </div>
         `;
         currentScreenshot = null;
+        
+        // Trigger token indicator update when image is cleared
+        const tokenUpdateEvent = new CustomEvent('contextUpdate');
+        document.dispatchEvent(tokenUpdateEvent);
       }
     });
   }
+  
+  // Trigger token indicator update when image is displayed
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function isYouTubePage(): boolean {
@@ -316,6 +324,10 @@ function updateElementPreview(): void {
       startElementSelection();
     });
   }
+  
+  // Trigger token indicator update when element preview is updated
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function showElementSelectionInstructions(): void {
@@ -830,6 +842,10 @@ async function fetchVideoSubtitles(): Promise<void> {
   } else {
     videoSubtitles = t('sidebar.preview.videoOnly');
   }
+  
+  // Trigger token indicator update when video subtitles are fetched
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function clearPreview(): void {
@@ -837,6 +853,10 @@ function clearPreview(): void {
     contentPreviewElement.textContent = t('sidebar.preview.noSelection');
   }
   lastSelection = '';
+  
+  // Trigger token indicator update when context is cleared
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function updatePreview(text: string): void {
@@ -846,6 +866,10 @@ function updatePreview(text: string): void {
       ? text.substring(0, 50) + '...'
       : text;
   }
+  
+  // Trigger token indicator update when context changes
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function handleSelectionChange(): void {
@@ -881,6 +905,10 @@ function handleSelectionChange(): void {
       clearPreview();
     }
   }
+  
+  // Trigger token indicator update when selection changes
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 function setupEventListeners(contentPreview: HTMLElement): void {
@@ -1072,6 +1100,10 @@ async function updateModeUI(mode: ContextMode, screenshotBtn: HTMLElement, dropZ
   } else if (mode === 'video') {
     await updateVideoUI(preview);
   }
+  
+  // Trigger token indicator update when mode UI is updated
+  const tokenUpdateEvent = new CustomEvent('contextUpdate');
+  document.dispatchEvent(tokenUpdateEvent);
 }
 
 export function setupContextModes(): void {
@@ -1124,11 +1156,19 @@ export function setupContextModes(): void {
         console.error('Failed to update mode UI:', error);
         contentPreview.textContent = 'Failed to update content';
       });
+      
+      // Trigger token indicator update when mode changes
+      const tokenUpdateEvent = new CustomEvent('contextUpdate');
+      document.dispatchEvent(tokenUpdateEvent);
     });
   });
 
   // Initialize with page content
-  updateModeUI('page', screenshotBtn, dropZone, contentPreview);
+  updateModeUI('page', screenshotBtn, dropZone, contentPreview).then(() => {
+    // Trigger initial token indicator update
+    const tokenUpdateEvent = new CustomEvent('contextUpdate');
+    document.dispatchEvent(tokenUpdateEvent);
+  });
 
   // Set up screenshot button
   screenshotBtn.addEventListener('click', async () => {

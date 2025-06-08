@@ -10,6 +10,8 @@ import { handleQuestion } from '../chat/messageHandler';
 import { clearChatHistory } from '../chat/chatHistory';
 import { modelManager } from '../../utils/modelManager';
 import { initializeLanguage, t } from '../../utils/i18n';
+import { estimateSimpleTokens, getTokenCountWithStatus, type TokenEstimate } from '../../utils/tokenCounter';
+import { simpleTokenEstimate, getSimpleTokenStatus } from '../../utils/simpleTokenCounter';
 
 interface Position {
   x: number;
@@ -320,6 +322,10 @@ export async function createSidebar(): Promise<void> {
         <div id="ai-answer"></div>
         <div class="ai-input-section">
           <textarea id="ai-question" placeholder="${t('sidebar.askPlaceholder')}" rows="4"></textarea>
+          <div class="ai-token-indicator" id="ai-token-indicator">
+            <span class="ai-token-count" id="ai-token-count">0 tokens</span>
+            <span class="ai-token-status" id="ai-token-status"></span>
+          </div>
           <div class="ai-bottom-controls">
             <button id="ai-ask-button">${t('sidebar.askButton')}</button>
             <select id="ai-model-selector" class="ai-model-selector"></select>
@@ -380,6 +386,58 @@ function setupEventListeners(): void {
     initializeModelSelector(modelSelector);
   }
 
+  // Token counting function
+  async function updateTokenIndicator(): Promise<void> {
+    const question = questionInput?.value.trim() || '';
+    const selectedModel = modelSelector?.value as ModelType || 'gpt-4o-mini';
+    const tokenCount = document.getElementById('ai-token-count');
+    const tokenStatus = document.getElementById('ai-token-status');
+    const tokenIndicator = document.getElementById('ai-token-indicator');
+    
+    if (!tokenCount || !tokenStatus || !tokenIndicator) return;
+    
+    // if (!question) {
+    //   tokenCount.textContent = '0 tokens';
+    //   tokenStatus.textContent = '';
+    //   tokenIndicator.className = 'ai-token-indicator';
+    //   return;
+    // }
+    
+    // Show loading state
+    tokenCount.textContent = 'Counting...';
+    tokenStatus.textContent = '';
+    tokenIndicator.className = 'ai-token-indicator';
+    
+    try {
+      const content = getPageContent();
+      
+      // Try tiktoken first, fallback to simple estimation
+      try {
+        const estimate = await estimateSimpleTokens(question, content, selectedModel);
+        const { text, status } = getTokenCountWithStatus(estimate);
+        
+        tokenCount.textContent = text;
+        tokenStatus.textContent = estimate.warning || '';
+        tokenIndicator.className = `ai-token-indicator ai-token-${status}`;
+      } catch (tiktokenError) {
+        console.warn('Tiktoken failed, using simple estimation:', tiktokenError);
+        
+        // Fallback to simple estimation
+        const estimate = simpleTokenEstimate(question, content, selectedModel);
+        const { text, status } = getSimpleTokenStatus(estimate);
+        
+        tokenCount.textContent = text;
+        tokenStatus.textContent = estimate.warning || 'Using estimated count';
+        tokenIndicator.className = `ai-token-indicator ai-token-${status}`;
+      }
+    } catch (error) {
+      console.warn('All token counting methods failed:', error);
+      tokenCount.textContent = 'Token count unavailable';
+      tokenStatus.textContent = 'Error loading token counter';
+      tokenIndicator.className = 'ai-token-indicator';
+    }
+  }
+
   // Set initial theme
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   let currentTheme: Theme = (localStorage.getItem('theme') as Theme) || (prefersDark ? 'dark' : 'light');
@@ -438,6 +496,31 @@ function setupEventListeners(): void {
       askButton?.click();
     }
   });
+
+  // Update token count when question changes
+  questionInput?.addEventListener('input', debouncedTokenUpdate);
+
+  // Update token count when model changes
+  modelSelector?.addEventListener('change', debouncedTokenUpdate);
+
+  // Debounce function to prevent too many rapid token updates
+  let tokenUpdateTimeout: number | undefined;
+  function debouncedTokenUpdate() {
+    if (tokenUpdateTimeout) {
+      clearTimeout(tokenUpdateTimeout);
+    }
+    tokenUpdateTimeout = window.setTimeout(() => {
+      updateTokenIndicator();
+    }, 100); // 100ms debounce
+  }
+
+  // Update token count when context changes
+  document.addEventListener('contextUpdate', debouncedTokenUpdate);
+
+  // Initial token count update
+  setTimeout(() => {
+    debouncedTokenUpdate();
+  }, 200);
 
   // Clear chat confirmation modal
   const confirmButton = modal?.querySelector('.ai-confirm-button');

@@ -31,6 +31,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "marked": "^15.0.4"
+    "marked": "^15.0.4",
+    "tiktoken": "^1.0.21"
   }
 }
