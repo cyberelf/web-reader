@@ -96,7 +96,16 @@ describe('Settings', () => {
           settings: {
             apiKey: 'new-api-key',
             apiUrl: 'https://old-url.com',
-            showIcon: false
+            showIcon: false,
+            shortcuts: {
+              '/clear': 'Clear chat history',
+              '/explain': 'Explain in simple terms',
+              '/generate': 'Generate similar content',
+              '/help': 'Show available commands',
+              '/model': 'Change AI model',
+              '/screenshot': 'Take a screenshot',
+              '/summarize': 'Summarize the content',
+            }
           }
         },
         expect.any(Function)
@@ -123,7 +132,17 @@ describe('Settings', () => {
         {
           settings: {
             apiKey: 'new-api-key',
-            showIcon: false
+            apiUrl: 'https://api.openai.com/v1',
+            showIcon: false,
+            shortcuts: {
+              '/clear': 'Clear chat history',
+              '/explain': 'Explain in simple terms',
+              '/generate': 'Generate similar content',
+              '/help': 'Show available commands',
+              '/model': 'Change AI model',
+              '/screenshot': 'Take a screenshot',
+              '/summarize': 'Summarize the content',
+            }
           }
         },
         expect.any(Function)
@@ -169,7 +188,16 @@ describe('Settings', () => {
             apiKey: 'test-api-key',
             model: 'gpt-4o',
             apiUrl: 'https://custom-url.com',
-            showIcon: true
+            showIcon: true,
+            shortcuts: {
+              '/clear': 'Clear chat history',
+              '/explain': 'Explain in simple terms',
+              '/generate': 'Generate similar content',
+              '/help': 'Show available commands',
+              '/model': 'Change AI model',
+              '/screenshot': 'Take a screenshot',
+              '/summarize': 'Summarize the content',
+            }
           }
         },
         expect.any(Function)

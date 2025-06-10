@@ -53,7 +53,7 @@ export class ShortcutHandler {
         const [settings, { customPrompts = {} }] = await Promise.all([
           getSettings(),
           new Promise<{ customPrompts?: Record<string, string> }>(resolve => {
-            chrome.storage.sync.get(['customPrompts'], resolve);
+            chrome.storage.sync.get({ customPrompts: {} }, resolve);
           })
         ]);
 

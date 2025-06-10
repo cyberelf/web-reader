@@ -7,14 +7,15 @@
     "activeTab",
     "scripting",
     "storage",
-    "declarativeNetRequest",
     "tabs",
-    "webRequest",
     "clipboardWrite"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
   "background": {
     "service_worker": "background.js"
   },

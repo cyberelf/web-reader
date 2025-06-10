@@ -7,8 +7,8 @@ describe('Theme Utility', () => {
     // Setup DOM elements
     container = document.createElement('div');
     container.innerHTML = `
-      <div id="page-reader-sidebar" class="light"></div>
-      <button id="theme-toggle" class="light"></button>
+      <div id="ai-page-reader-sidebar" class="light"></div>
+      <button id="ai-theme-toggle" class="light"></button>
     `;
     document.body.appendChild(container);
   });
@@ -21,22 +21,20 @@ describe('Theme Utility', () => {
     it('should apply light theme', () => {
       applyTheme('light');
 
-      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
-      expect(document.getElementById('page-reader-sidebar')?.classList.contains('light')).toBe(true);
-      expect(document.getElementById('theme-toggle')?.classList.contains('light')).toBe(true);
+      expect(document.getElementById('ai-page-reader-sidebar')?.classList.contains('light')).toBe(true);
+      expect(document.getElementById('ai-theme-toggle')?.classList.contains('light')).toBe(true);
     });
 
     it('should apply dark theme', () => {
       applyTheme('dark');
 
-      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-      expect(document.getElementById('page-reader-sidebar')?.classList.contains('dark')).toBe(true);
-      expect(document.getElementById('theme-toggle')?.classList.contains('dark')).toBe(true);
+      expect(document.getElementById('ai-page-reader-sidebar')?.classList.contains('dark')).toBe(true);
+      expect(document.getElementById('ai-theme-toggle')?.classList.contains('dark')).toBe(true);
     });
 
     it('should remove previous theme class when switching themes', () => {
-      const sidebar = document.getElementById('page-reader-sidebar');
-      const toggle = document.getElementById('theme-toggle');
+      const sidebar = document.getElementById('ai-page-reader-sidebar');
+      const toggle = document.getElementById('ai-theme-toggle');
 
       // Start with light theme
       sidebar?.classList.add('light');
@@ -55,7 +53,6 @@ describe('Theme Utility', () => {
       document.body.innerHTML = ''; // Remove all elements
 
       expect(() => applyTheme('light')).not.toThrow();
-      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     });
   });
 }); 

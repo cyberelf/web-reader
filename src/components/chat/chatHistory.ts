@@ -6,6 +6,8 @@ import type { ModelType } from '../../config';
 import { handleQuestion } from './messageHandler';
 import { getPageContent } from '../context/contextModes';
 import { modelManager } from '../../utils/modelManager';
+import { getChromeStorageLocal, setChromeStorageLocal } from '../../utils/storage';
+
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -32,10 +34,8 @@ export async function loadChatHistory(): Promise<void> {
     // Initialize model manager first
     await modelManager.initialize();
     
-    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
-      chrome.storage.local.get(['chatHistories'], resolve);
-    });
-    
+    const result = await getChromeStorageLocal<{ chatHistories?: Record<string, ChatHistory> }>({ chatHistories: {} });
+
     const histories = result.chatHistories || {};
     const currentUrl = String(window.location.href);
     const urlHistory = histories[currentUrl];
@@ -95,9 +95,7 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
     // Initialize model manager if not already initialized
     await modelManager.initialize();
     
-    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
-      chrome.storage.local.get(['chatHistories'], resolve);
-    });
+    const result = await getChromeStorageLocal<{ chatHistories?: Record<string, ChatHistory> }>({ chatHistories: {} });
     
     const histories = result.chatHistories || {};
     histories[window.location.href] = currentHistory;
@@ -150,10 +148,8 @@ export async function updateLastMessage(content: string): Promise<void> {
   lastMessage.content = content;
 
   try {
-    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
-      chrome.storage.local.get(['chatHistories'], resolve);
-    });
-    
+    const result = await getChromeStorageLocal<{ chatHistories?: Record<string, ChatHistory> }>({ chatHistories: {} });
+
     const histories = result.chatHistories || {};
     histories[window.location.href] = currentHistory;
     
@@ -163,7 +159,7 @@ export async function updateLastMessage(content: string): Promise<void> {
     
     const answerDiv = document.getElementById('ai-answer');
     if (answerDiv) {
-      const lastMessageDiv = answerDiv.querySelector('.ai-chat-messages .ai-assistant-message:last-of-type .ai-message-content');
+      const lastMessageDiv = answerDiv.querySelector('.ai-chat-messages .ai-assistant-message:last-of-type .ai-message-content') as HTMLElement;
       if (lastMessageDiv) {
         lastMessageDiv.innerHTML = renderMarkdown(content);
       }
@@ -175,10 +171,8 @@ export async function updateLastMessage(content: string): Promise<void> {
 
 export async function clearChatHistory(): Promise<void> {
   try {
-    const result = await new Promise<{ chatHistories?: Record<string, ChatHistory> }>((resolve) => {
-      chrome.storage.local.get(['chatHistories'], resolve);
-    });
-    
+    const result = await getChromeStorageLocal<{ chatHistories?: Record<string, ChatHistory> }>({ chatHistories: {} });
+
     const histories = result.chatHistories || {};
     delete histories[window.location.href];
     

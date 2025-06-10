@@ -1,7 +1,5 @@
 # Page Reader Assistant
 
-[![Created by LLM](https://img.shields.io/badge/Created%20by-LLM-blue.svg)](.)
-
 A Chrome extension that allows you to ask questions about web page content, images, and screenshots using AI. Powered by OpenAI's GPT models.
 
 ## Features

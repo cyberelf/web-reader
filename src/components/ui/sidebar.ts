@@ -10,7 +10,7 @@ import { handleQuestion } from '../chat/messageHandler';
 import { clearChatHistory } from '../chat/chatHistory';
 import { modelManager } from '../../utils/modelManager';
 import { initializeLanguage, t } from '../../utils/i18n';
-import { estimateSimpleTokens, getTokenCountWithStatus, type TokenEstimate } from '../../utils/tokenCounter';
+import { getTokenEstimate, getTokenStatus } from '../../utils/tokenCounter';
 import { simpleTokenEstimate, getSimpleTokenStatus } from '../../utils/simpleTokenCounter';
 
 interface Position {
@@ -411,25 +411,13 @@ function setupEventListeners(): void {
     try {
       const content = getPageContent();
       
-      // Try tiktoken first, fallback to simple estimation
-      try {
-        const estimate = await estimateSimpleTokens(question, content, selectedModel);
-        const { text, status } = getTokenCountWithStatus(estimate);
-        
-        tokenCount.textContent = text;
-        tokenStatus.textContent = estimate.warning || '';
-        tokenIndicator.className = `ai-token-indicator ai-token-${status}`;
-      } catch (tiktokenError) {
-        console.warn('Tiktoken failed, using simple estimation:', tiktokenError);
-        
-        // Fallback to simple estimation
-        const estimate = simpleTokenEstimate(question, content, selectedModel);
-        const { text, status } = getSimpleTokenStatus(estimate);
-        
-        tokenCount.textContent = text;
-        tokenStatus.textContent = estimate.warning || 'Using estimated count';
-        tokenIndicator.className = `ai-token-indicator ai-token-${status}`;
-      }
+      // Use simple token estimation (no tiktoken dependency)
+      const estimate = simpleTokenEstimate(question, content, selectedModel);
+      const { text, status } = getSimpleTokenStatus(estimate);
+      
+      tokenCount.textContent = text;
+      tokenStatus.textContent = estimate.warning || 'Token count estimated';
+      tokenIndicator.className = `ai-token-indicator ai-token-${status}`;
     } catch (error) {
       console.warn('All token counting methods failed:', error);
       tokenCount.textContent = 'Token count unavailable';

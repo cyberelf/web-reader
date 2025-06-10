@@ -10,6 +10,40 @@ interface FetchImageResponse {
   error?: string;
 }
 
+// URL validation function to prevent SSRF attacks
+function isValidImageUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    
+    // Only allow HTTP and HTTPS protocols
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return false;
+    }
+    
+    // Block localhost and private IP ranges
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (hostname === 'localhost' || 
+        hostname === '127.0.0.1' || 
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.startsWith('172.16.') ||
+        hostname.startsWith('172.17.') ||
+        hostname.startsWith('172.18.') ||
+        hostname.startsWith('172.19.') ||
+        hostname.startsWith('172.2') ||
+        hostname.startsWith('172.30.') ||
+        hostname.startsWith('172.31.') ||
+        hostname === '0.0.0.0' ||
+        hostname.includes('..')) {
+      return false;
+    }
+    
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   // Set default settings
   chrome.storage.sync.get(['showIcon'], (result) => {
@@ -54,11 +88,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             files: ['content.js']
           }).catch(err => {
             console.error('Failed to inject content script:', err);
-            // Try again with world: 'MAIN' if initial injection fails
+            // Use ISOLATED world for better security
             chrome.scripting.executeScript({
               target: { tabId: tabId },
               files: ['content.js'],
-              world: 'MAIN'
+              world: 'ISOLATED'
             }).catch(err2 => console.error('Failed second injection attempt:', err2));
           });
         }
@@ -76,7 +110,7 @@ chrome.runtime.onMessage.addListener((
   if (request.action === 'takeScreenshot') {
     chrome.tabs.captureVisibleTab(chrome.windows.WINDOW_ID_CURRENT, { format: 'png' }, (dataUrl: string) => {
       if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
+        console.error('Screenshot failed:', chrome.runtime.lastError.message);
         sendResponse(null);
       } else {
         sendResponse(dataUrl);
@@ -86,15 +120,54 @@ chrome.runtime.onMessage.addListener((
   }
 
   if (request.action === 'fetchImage' && request.url) {
-    fetch(request.url)
-      .then((response: Response): Promise<Blob> => response.blob())
+    // Validate URL before fetching
+    if (!isValidImageUrl(request.url)) {
+      sendResponse({ error: 'Invalid or unsafe URL' });
+      return true;
+    }
+
+    // Add timeout and proper error handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    fetch(request.url, { 
+      signal: controller.signal,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Page Reader Assistant Chrome Extension'
+      }
+    })
+      .then((response: Response) => {
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.startsWith('image/')) {
+          throw new Error('Response is not an image');
+        }
+        
+        // Check content length (max 10MB)
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+          throw new Error('Image too large');
+        }
+        
+        return response.blob();
+      })
       .then((blob: Blob): void => {
         const reader = new FileReader();
         reader.onloadend = () => sendResponse({ data: reader.result as string });
         reader.onerror = () => sendResponse({ error: 'Failed to read image data' });
         reader.readAsDataURL(blob);
       })
-      .catch(error => sendResponse({ error: error.message }));
+      .catch(error => {
+        clearTimeout(timeoutId);
+        sendResponse({ error: error.message || 'Failed to fetch image' });
+      });
     return true; // Required for async response
   }
 }); 

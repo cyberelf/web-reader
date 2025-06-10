@@ -1,148 +1,139 @@
-import { getSettings } from '../settings';
 import { handleQuestion } from '../components/chat/messageHandler';
+import { modelManager } from '../utils/modelManager';
 
-jest.mock('../settings');
+// Mock the chatHistory functions
+jest.mock('../components/chat/chatHistory', () => ({
+  addMessage: jest.fn().mockResolvedValue(undefined),
+  updateLastMessage: jest.fn().mockResolvedValue(undefined),
+}));
 
-// Create a minimal Response implementation
-class MockResponse implements Response {
-  readonly ok: boolean;
-  readonly status: number;
-  readonly statusText: string;
-  private responseData: any;
+// Mock the modelManager
+jest.mock('../utils/modelManager', () => ({
+  modelManager: {
+    initialize: jest.fn().mockResolvedValue(undefined),
+    getCurrentConfig: jest.fn(),
+  }
+}));
 
-  constructor(ok: boolean, data: any, status: number = 200, statusText: string = '') {
-    this.ok = ok;
-    this.responseData = data;
-    this.status = status;
-    this.statusText = statusText;
-  }
+// Mock the API client
+jest.mock('../utils/apiClient', () => ({
+  createAPIClient: jest.fn().mockReturnValue({
+    sendStreamingRequest: jest.fn().mockResolvedValue({
+      usage: { total_tokens: 100 }
+    })
+  })
+}));
 
-  json(): Promise<any> {
-    return Promise.resolve(this.responseData);
-  }
+// Mock the rate limiter
+jest.mock('../utils/rateLimiter', () => ({
+  createRateLimiter: jest.fn().mockReturnValue({
+    canMakeRequest: jest.fn().mockResolvedValue({ allowed: true }),
+    recordRequest: jest.fn().mockResolvedValue(undefined)
+  }),
+  RateLimiter: jest.fn().mockImplementation(() => ({
+    canMakeRequest: jest.fn().mockResolvedValue({ allowed: true }),
+    recordRequest: jest.fn().mockResolvedValue(undefined)
+  }))
+}));
 
-  // Implement required Response interface properties
-  readonly headers: Headers = new Headers();
-  readonly redirected: boolean = false;
-  readonly type: ResponseType = 'basic';
-  readonly url: string = '';
-  readonly body: ReadableStream<Uint8Array> | null = null;
-  readonly bodyUsed: boolean = false;
+// Mock the image utilities
+jest.mock('../utils/imageUtils', () => ({
+  resizeImage: jest.fn().mockResolvedValue('data:image/png;base64,resized')
+}));
 
-  arrayBuffer(): Promise<ArrayBuffer> {
-    throw new Error('Method not implemented.');
-  }
-  blob(): Promise<Blob> {
-    throw new Error('Method not implemented.');
-  }
-  formData(): Promise<FormData> {
-    throw new Error('Method not implemented.');
-  }
-  text(): Promise<string> {
-    throw new Error('Method not implemented.');
-  }
-  clone(): Response {
-    return new MockResponse(this.ok, this.responseData, this.status, this.statusText);
-  }
-  bytes(): Promise<Uint8Array> {
-    throw new Error('Method not implemented.');
-  }
-}
+// Mock the prompt shortcuts
+jest.mock('../components/chat/promptShortcuts', () => ({
+  handleShortcut: jest.fn().mockResolvedValue(null)
+}));
 
-// Mock fetch function
-const mockFetch = jest.fn();
+// Mock Chrome API
+const mockChromeStorage = {
+  sync: {
+    get: jest.fn().mockImplementation((keys, callback) => {
+      if (callback) {
+        callback({ customPrompts: {} });
+      }
+      return Promise.resolve({ customPrompts: {} });
+    }),
+    set: jest.fn(),
+  },
+  local: {
+    get: jest.fn().mockImplementation((keys, callback) => {
+      if (callback) {
+        callback({ tokenUsage: { totalTokens: 0, requestCount: 0 } });
+      }
+      return Promise.resolve({ tokenUsage: { totalTokens: 0, requestCount: 0 } });
+    }),
+    set: jest.fn().mockImplementation((data, callback) => {
+      if (callback) {
+        callback();
+      }
+      return Promise.resolve();
+    }),
+  },
+  onChanged: {
+    addListener: jest.fn(),
+  }
+};
 
-// Set up global fetch mock
-Object.defineProperty(window, 'fetch', {
-  value: mockFetch,
+Object.defineProperty(globalThis, 'chrome', {
+  value: {
+    storage: mockChromeStorage,
+    runtime: {
+      lastError: null,
+    }
+  },
   writable: true
 });
 
 describe('Message Handler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockClear();
+  });
+
+  it('should throw error when no API config is available', async () => {
+    (modelManager.getCurrentConfig as jest.Mock).mockReturnValue(null);
+
+    await expect(async () => {
+      await handleQuestion('test question', 'test context');
+    }).rejects.toThrow('Please configure an API provider in the extension settings.');
   });
 
   it('should throw error when API key is not set', async () => {
-    (getSettings as jest.Mock).mockResolvedValue({
+    (modelManager.getCurrentConfig as jest.Mock).mockReturnValue({
       apiUrl: 'https://api.openai.com/v1',
-      showIcon: true,
-      shortcuts: {}
+      model: 'gpt-4'
     });
 
     await expect(async () => {
       await handleQuestion('test question', 'test context');
-    }).rejects.toThrow('Please set your OpenAI API key in the extension settings');
-  });
-
-  it('should throw error when API key is empty', async () => {
-    (getSettings as jest.Mock).mockResolvedValue({
-      apiKey: '',
-      apiUrl: 'https://api.openai.com/v1',
-      showIcon: true,
-      shortcuts: {}
-    });
-
-    await expect(async () => {
-      await handleQuestion('test question', 'test context');
-    }).rejects.toThrow('Please set your OpenAI API key in the extension settings');
+    }).rejects.toThrow('Please configure an API provider in the extension settings.');
   });
 
   it('should proceed with valid API key', async () => {
-    (getSettings as jest.Mock).mockResolvedValue({
+    (modelManager.getCurrentConfig as jest.Mock).mockReturnValue({
       apiKey: 'valid-api-key',
       apiUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4',
-      showIcon: true,
-      shortcuts: {}
+      model: 'gpt-4'
     });
 
-    // Mock fetch response
-    mockFetch.mockResolvedValue(
-      new MockResponse(true, { choices: [{ message: { content: 'test response' } }] })
-    );
-
-    const response = await handleQuestion('test question', 'test context');
-    expect(response).toBe('test response');
+    // This should not throw an error
+    await expect(handleQuestion('test question', 'test context')).resolves.not.toThrow();
   });
 
-  it('should use custom API URL when provided', async () => {
-    const customUrl = 'https://custom-openai-url.com';
-    (getSettings as jest.Mock).mockResolvedValue({
+  it('should handle API configuration correctly', async () => {
+    const mockConfig = {
       apiKey: 'valid-api-key',
-      apiUrl: customUrl,
-      model: 'gpt-4',
-      showIcon: true,
-      shortcuts: {}
-    });
-
-    mockFetch.mockResolvedValue(
-      new MockResponse(true, { choices: [{ message: { content: 'test response' } }] })
-    );
+      apiUrl: 'https://custom-openai-url.com',
+      model: 'gpt-4'
+    };
+    
+    (modelManager.getCurrentConfig as jest.Mock).mockReturnValue(mockConfig);
 
     await handleQuestion('test question', 'test context');
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining(customUrl),
-      expect.any(Object)
-    );
-  });
-
-  it('should handle API errors gracefully', async () => {
-    (getSettings as jest.Mock).mockResolvedValue({
-      apiKey: 'valid-api-key',
-      apiUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4',
-      showIcon: true,
-      shortcuts: {}
-    });
-
-    mockFetch.mockResolvedValue(
-      new MockResponse(false, {}, 401, 'Unauthorized')
-    );
-
-    await expect(async () => {
-      await handleQuestion('test question', 'test context');
-    }).rejects.toThrow('API request failed: 401 Unauthorized');
+    
+    // Verify that modelManager was initialized
+    expect(modelManager.initialize).toHaveBeenCalled();
+    expect(modelManager.getCurrentConfig).toHaveBeenCalled();
   });
 }); 

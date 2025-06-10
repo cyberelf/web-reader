@@ -9,11 +9,17 @@ let PROMPT_SHORTCUTS: PromptShortcuts = {
 };
 
 async function loadCustomPrompts() {
-  const { customPrompts = {} } = await chrome.storage.sync.get(['customPrompts']);
-  PROMPT_SHORTCUTS = {
-    ...PROMPT_SHORTCUTS,
-    ...customPrompts
-  };
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
+      const { customPrompts = {} } = await chrome.storage.sync.get(['customPrompts']);
+      PROMPT_SHORTCUTS = {
+        ...PROMPT_SHORTCUTS,
+        ...customPrompts
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load custom prompts:', error);
+  }
   return PROMPT_SHORTCUTS;
 }
 
@@ -32,17 +38,19 @@ async function handleShortcut(input: string) {
   return null;
 }
 
-// Listen for custom prompt changes
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'sync' && changes.customPrompts) {
-    const customPrompts = changes.customPrompts.newValue || {};
-    PROMPT_SHORTCUTS = {
-      '/summarize': 'Please provide a concise summary of this content, highlighting the main points and key takeaways.',
-      '/explain': 'Please explain this content in simple terms, breaking down any complex concepts and providing clear explanations.',
-      '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
-      ...customPrompts
-    };
-  }
-});
+// Listen for custom prompt changes (only if Chrome API is available)
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'sync' && changes.customPrompts) {
+      const customPrompts = changes.customPrompts.newValue || {};
+      PROMPT_SHORTCUTS = {
+        '/summarize': 'Please provide a concise summary of this content, highlighting the main points and key takeaways.',
+        '/explain': 'Please explain this content in simple terms, breaking down any complex concepts and providing clear explanations.',
+        '/generate': 'Please analyze the style and tone of this content, then generate a new piece of text that matches this style but covers a similar topic.',
+        ...customPrompts
+      };
+    }
+  });
+}
 
 export { PROMPT_SHORTCUTS, loadCustomPrompts, handleShortcut }; 

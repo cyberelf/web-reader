@@ -1,6 +1,7 @@
 /// <reference types="chrome"/>
 
 import { createAPIClient, detectProvider, OPENAI_PROVIDER, DEEPSEEK_PROVIDER, GEMINI_PROVIDER } from './apiClient';
+import { saveSecureData, loadSecureData } from './storage';
 
 export interface ModelInfo {
   id: string;
@@ -95,6 +96,7 @@ export class ModelManager {
 
   async initialize(): Promise<void> {
     await this.loadData();
+    await this.loadApiKeys();
   }
 
   private async loadData(): Promise<void> {
@@ -127,6 +129,23 @@ export class ModelManager {
     });
   }
 
+  private async loadApiKeys(): Promise<void> {
+    try {
+      const apiKeysData = await loadSecureData('provider_api_keys');
+      const apiKeys: Record<string, string> = apiKeysData ? JSON.parse(apiKeysData) : {};
+      
+      // Update provider configurations with API keys from secure storage
+      Object.entries(apiKeys).forEach(([providerId, apiKey]) => {
+        if (this.data.providers[providerId]) {
+          this.data.providers[providerId].apiKey = apiKey;
+          this.data.providers[providerId].isConfigured = !!apiKey;
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load API keys from secure storage:', error);
+    }
+  }
+
   private fixExistingModels(): void {
     // Fix models that might not have isManual property set correctly
     let needsSave = false;
@@ -155,9 +174,18 @@ export class ModelManager {
 
   private async saveData(): Promise<void> {
     try {
-      // Prepare optimized data structures
+      // Prepare optimized data structures (exclude API keys from sync storage)
+      const providersWithoutApiKeys: Record<string, ProviderConfig> = {};
+      Object.entries(this.data.providers).forEach(([id, provider]) => {
+        const { apiKey, ...providerWithoutApiKey } = provider;
+        providersWithoutApiKeys[id] = {
+          ...providerWithoutApiKey,
+          isConfigured: !!apiKey // Keep the configured status
+        };
+      });
+
       const mainData = {
-        providers: this.data.providers,
+        providers: providersWithoutApiKeys,
         selectedModel: this.data.selectedModel,
         selectedProvider: this.data.selectedProvider
       };
@@ -249,14 +277,41 @@ export class ModelManager {
     return this.data.providers[id];
   }
 
-  updateProviderConfig(providerId: string, config: Partial<ProviderConfig>): void {
+  async updateProviderConfig(providerId: string, config: Partial<ProviderConfig>): Promise<void> {
     if (this.data.providers[providerId]) {
+      // Handle API key separately - save to secure storage
+      if (config.apiKey !== undefined) {
+        await this.updateApiKey(providerId, config.apiKey);
+      }
+
+      // Update provider config (excluding API key)
+      const { apiKey, ...configWithoutApiKey } = config;
       this.data.providers[providerId] = {
         ...this.data.providers[providerId],
-        ...config,
+        ...configWithoutApiKey,
         isConfigured: !!(config.apiKey || this.data.providers[providerId].apiKey)
       };
       this.saveData();
+    }
+  }
+
+  private async updateApiKey(providerId: string, apiKey: string): Promise<void> {
+    try {
+      const apiKeysData = await loadSecureData('provider_api_keys');
+      const apiKeys: Record<string, string> = apiKeysData ? JSON.parse(apiKeysData) : {};
+      
+      if (apiKey && apiKey.trim()) {
+        apiKeys[providerId] = apiKey;
+        this.data.providers[providerId].apiKey = apiKey;
+      } else {
+        delete apiKeys[providerId];
+        delete this.data.providers[providerId].apiKey;
+      }
+      
+      await saveSecureData('provider_api_keys', JSON.stringify(apiKeys));
+    } catch (error) {
+      console.error('Failed to update API key in secure storage:', error);
+      throw error;
     }
   }
 

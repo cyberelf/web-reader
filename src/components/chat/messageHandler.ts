@@ -7,7 +7,7 @@ import { createAPIClient, type LLMRequest, type APIError } from '../../utils/api
 import { createRateLimiter, type RateLimiter } from '../../utils/rateLimiter';
 import { modelManager } from '../../utils/modelManager';
 import type { ModelType } from '../../config';
-import { estimateSimpleTokens } from '../../utils/tokenCounter';
+import { getTokenEstimate } from '../../utils/tokenCounter';
 
 interface TokenUsage {
   totalTokens: number;
@@ -34,7 +34,7 @@ function getRateLimiter(apiUrl: string): RateLimiter {
 
 async function updateTokenUsage(newTokens: number): Promise<void> {
   const result = await new Promise<{ tokenUsage?: TokenUsage }>((resolve) => {
-    chrome.storage.local.get(['tokenUsage'], resolve);
+    chrome.storage.local.get({ tokenUsage: { totalTokens: 0, requestCount: 0 } }, resolve);
   });
   
   const currentUsage = result.tokenUsage || { totalTokens: 0, requestCount: 0 };

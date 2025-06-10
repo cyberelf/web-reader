@@ -231,18 +231,27 @@ function initializeProviderInputs(): void {
     
     // Save API key changes
     if (apiKeyInput) {
-      apiKeyInput.addEventListener('blur', () => {
+      apiKeyInput.addEventListener('blur', async () => {
         if (providerId === 'custom') {
           // Handle custom provider separately
           return;
         }
         
-        modelManager.updateProviderConfig(providerId, {
-          apiKey: apiKeyInput.value
-        });
-        
-        // Update provider status
-        updateProviderStatus(providerId);
+        try {
+          await modelManager.updateProviderConfig(providerId, {
+            apiKey: apiKeyInput.value
+          });
+          
+          // Update provider status
+          updateProviderStatus(providerId);
+          
+          if (apiKeyInput.value.trim()) {
+            showNotification('API key saved securely', 'success');
+          }
+        } catch (error) {
+          console.error('Failed to update API key:', error);
+          showNotification('Failed to save API key', 'error');
+        }
       });
     }
     

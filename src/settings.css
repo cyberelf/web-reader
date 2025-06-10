@@ -28,6 +28,7 @@ label {
 }
 
 #api-key,
+#openai-api-key,
 #openai-url,
 #model-selector,
 #provider-selector,

@@ -11,9 +11,6 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js'
   },
-  experiments: {
-    asyncWebAssembly: true
-  },
   module: {
     rules: [
       {
@@ -24,10 +21,6 @@ module.exports = {
           /src\/__tests__/,
           /\.test\.ts$/
         ]
-      },
-      {
-        test: /\.wasm$/,
-        type: 'webassembly/async'
       }
     ]
   },
