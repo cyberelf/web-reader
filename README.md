@@ -7,14 +7,18 @@ A Chrome extension that allows you to ask questions about web page content, imag
 - 🤖 Ask questions about any webpage content
 - 📸 Take screenshots and ask questions about them
 - 🖼️ Drag and drop images for visual analysis
-- 🎥 Extract and analyze YouTube video subtitles
+- 🎥 Extract and analyze YouTube and Bilibili video subtitles
 - 💬 Chat-like interface with message history
 - 🌓 Light/Dark theme support
-- ⌨️ Keyboard shortcuts (Enter to send, Shift+Enter for new line)
+- ⌨️ Customizable prompt shortcuts
 - 🔄 Real-time streaming responses
 - 📱 Responsive sidebar design
 - 🎨 Support for various image formats (PNG, JPEG, GIF, WebP, SVG)
+- 🧠 Support for multiple AI models and custom API endpoints (including OpenAI, Gemini, and Deepseek)
 - 🔒 Type-safe codebase with TypeScript
+- 🖱️ Web page element selection for precise context
+- 🌍 Multi-lingual UI support (English and Chinese)
+- 📊 Token estimation for API calls
 
 ## Installation
 
@@ -27,12 +31,12 @@ A Chrome extension that allows you to ask questions about web page content, imag
 
 ## Usage
 
-1. Click the "Ask AI" button on any webpage to open the sidebar
+1. Toggle the sidebar using the keyboard shortcut `Alt+Shift+K` (Windows/Linux) or `Option+Shift+K` (macOS), or by clicking the "Ask AI" button on any webpage.
 2. Choose your context mode:
    - Full Page: Ask about the entire page content
-   - Selection: Ask about selected text
+   - Selection: Ask about selected text or selected page elements
    - Screenshot/Image: Take a screenshot or drop an image to analyze
-   - YouTube: Extract and analyze video subtitles (on YouTube pages)
+   - YouTube/Bilibili: Extract and analyze video subtitles (on YouTube and Bilibili pages)
 3. Type your question and press Enter or click "Ask Question"
 4. View the AI's response in real-time
 
@@ -130,15 +134,15 @@ For issues, questions, or suggestions:
 ## Future Plans
 
 - [x] TypeScript migration for improved type safety and developer experience
-- [x] Support for more AI models (Implemented with model selector and GPT-4 Vision support)
+- [x] Support for more AI models (Implemented with model selector and GPT-4 Vision, Gemini, and Deepseek support)
 - [x] Enhanced image analysis capabilities (Implemented with GPT-4 Vision API)
 - [x] Custom styling options (Implemented with Light/Dark theme support)
-- [ ] Export chat history
 - [x] Keyboard shortcuts customization (Implemented with custom prompts and Alt+number shortcuts)
-- [ ] Context-aware prompts based on page content
-- [ ] Multi-language support
-- [ ] Integration with other AI providers
-- [x] YouTube subtitle support for video content analysis
+- [x] Context-aware prompts based on page content (Implemented with web page element selection)
+- [x] Multi-language support (Implemented with English and Chinese UI)
+- [x] Integration with other AI providers (Implemented with Gemini and Deepseek support)
+- [x] YouTube subtitle support for video content analysis (Implemented with YouTube and Bilibili support)
+- [x] Token estimation for API calls
 - [ ] Browser extension sync across devices
-- [ ] Advanced screenshot tools (annotations, region selection)
-- [ ] Voice input/output support
+- [ ] Generate and enhance custom prompt with AI
+- [ ] Export chat history

@@ -202,16 +202,15 @@ export function formatSimpleTokenCount(estimate: SimpleTokenEstimate): string {
   if (estimate.imageTokens > 0) {
     parts.push(`${estimate.tokens.toLocaleString()} text`);
     parts.push(`${estimate.imageTokens.toLocaleString()} image`);
-    parts.push(`${estimate.totalTokens.toLocaleString()} total tokens`);
   } else {
     parts.push(`${estimate.totalTokens.toLocaleString()} tokens`);
   }
   
   if (estimate.isEstimated) {
-    return parts.join(' + ') + ' (est)';
+    return parts.join(' + ') + ` : ${estimate.totalTokens.toLocaleString()} total tokens` + ' (est)';
   }
   
-  return parts.join(' + ');
+  return parts.join(' + ') + ` : ${estimate.totalTokens.toLocaleString()} total tokens`;
 }
 
 /**
