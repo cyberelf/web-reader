@@ -12,13 +12,14 @@ export interface Translations {
     clear: string;
     close: string;
   };
-  sidebar: {
-    title: string;
-    askPlaceholder: string;
-    askButton: string;
-    clearHistory: string;
-    clearHistoryConfirm: string;
-    clearHistoryMessage: string;
+      sidebar: {
+      title: string;
+      askPlaceholder: string;
+      askButton: string;
+      clearHistory: string;
+      clearHistoryConfirm: string;
+      clearHistoryMessage: string;
+      includeChatHistory: string;
     modes: {
       page: string;
       selection: string;
@@ -81,6 +82,7 @@ export const translations: Record<Language, Translations> = {
       clearHistory: 'Clear Chat History',
       clearHistoryConfirm: 'Clear History',
       clearHistoryMessage: 'Are you sure you want to clear the chat history for this page?',
+      includeChatHistory: 'Include chat history',
       modes: {
         page: 'Page',
         selection: 'Selection',
@@ -141,6 +143,7 @@ export const translations: Record<Language, Translations> = {
       clearHistory: '清空聊天记录',
       clearHistoryConfirm: '清空记录',
       clearHistoryMessage: '确定要清空此页面的聊天记录吗？',
+      includeChatHistory: '包含聊天记录',
       modes: {
         page: '页面',
         selection: '选择',

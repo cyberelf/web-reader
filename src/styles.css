@@ -684,6 +684,15 @@
   color: var(--text, #1e293b);
 }
 
+.ai-assistant-message h1,
+.ai-assistant-message h2,
+.ai-assistant-message h3,
+.ai-assistant-message h4,
+.ai-assistant-message h5,
+.ai-assistant-message h6 {
+  color: var(--text, #1e293b);
+}
+
 .ai-message-content {
   line-height: 1.5;
   font-size: 14px;
@@ -1448,4 +1457,98 @@ kbd {
     font-size: 14px;
     padding: 12px 8px;
   }
+}
+
+/* Chat History Toggle Styles */
+.ai-chat-controls {
+  padding: 12px 0;
+  border-top: 1px solid var(--border, #e2e8f0);
+  margin-top: 8px;
+}
+
+.ai-chat-history-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text, #374151);
+  margin: 0;
+}
+
+.ai-toggle-label span {
+  font-weight: 500;
+}
+
+.ai-toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  margin-left: 12px;
+}
+
+.ai-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ai-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border, #cbd5e1);
+  transition: .4s;
+  border-radius: 20px;
+}
+
+.ai-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+.ai-toggle-switch input:checked + .ai-toggle-slider {
+  background-color: var(--button-bg, #3b82f6);
+}
+
+.ai-toggle-switch input:checked + .ai-toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.ai-toggle-switch input:focus + .ai-toggle-slider {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Dark theme support for toggle */
+[data-theme="dark"] .ai-chat-controls {
+  border-color: var(--border, #4d4d4d);
+}
+
+[data-theme="dark"] .ai-toggle-label {
+  color: var(--text, #e2e8f0);
+}
+
+[data-theme="dark"] .ai-toggle-slider {
+  background-color: var(--border, #4d4d4d);
+}
+
+[data-theme="dark"] .ai-toggle-slider:before {
+  background-color: #1a1a1a;
 }

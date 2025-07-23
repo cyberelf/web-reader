@@ -134,6 +134,8 @@ export async function addMessage(role: 'user' | 'assistant', content: string, mo
 
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+    
+
   } catch (error) {
     console.error('Failed to save message:', error);
   }
@@ -164,6 +166,8 @@ export async function updateLastMessage(content: string): Promise<void> {
         lastMessageDiv.innerHTML = renderMarkdown(content);
       }
     }
+    
+
   } catch (error) {
     console.error('Failed to update message:', error);
   }
@@ -187,9 +191,29 @@ export async function clearChatHistory(): Promise<void> {
     if (answerDiv) {
       answerDiv.innerHTML = '';
     }
+    
+    // Trigger token update after clearing history
+    // (to update token estimation when chat history is included)
+    const tokenUpdateEvent = new CustomEvent('chatHistoryUpdate');
+    document.dispatchEvent(tokenUpdateEvent);
   } catch (error) {
     console.error('Failed to clear chat history:', error);
   }
+}
+
+export function getChatHistoryMessages(): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+  // Return all messages except the current incomplete assistant message
+  const messages = currentHistory.messages.slice();
+  
+  // If the last message is an empty assistant message (placeholder), remove it
+  if (messages.length > 0 && messages[messages.length - 1].role === 'assistant' && !messages[messages.length - 1].content.trim()) {
+    messages.pop();
+  }
+  
+  return messages.map(msg => ({
+    role: msg.role,
+    content: msg.content
+  }));
 }
 
 function createMessageElement(message: ChatMessage): HTMLDivElement {

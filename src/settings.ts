@@ -17,6 +17,7 @@ export interface StorageResult {
     apiUrl?: string;
     model?: string;
     showIcon?: boolean;
+    includeChatHistory?: boolean;
     shortcuts?: { [key: string]: string };
   }
 }
@@ -26,12 +27,14 @@ export interface Settings {
   apiUrl?: string;
   model?: string;
   showIcon: boolean;
+  includeChatHistory: boolean;
   shortcuts: { [key: string]: string };
 }
 
 const DEFAULT_SETTINGS: Settings = {
   apiUrl: 'https://api.openai.com/v1',
   showIcon: true,
+  includeChatHistory: true,
   shortcuts: {
     '/help': 'Show available commands',
     '/clear': 'Clear chat history',

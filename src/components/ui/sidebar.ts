@@ -11,7 +11,9 @@ import { clearChatHistory } from '../chat/chatHistory';
 import { modelManager } from '../../utils/modelManager';
 import { initializeLanguage, t } from '../../utils/i18n';
 import { getTokenEstimate, getTokenStatus } from '../../utils/tokenCounter';
-import { simpleTokenEstimate, getSimpleTokenStatus } from '../../utils/simpleTokenCounter';
+import { simpleTokenEstimate, getSimpleTokenStatus, simpleTokenEstimation } from '../../utils/simpleTokenCounter';
+import { getSettings, updateSettings } from '../../settings';
+import { getChatHistoryMessages } from '../chat/chatHistory';
 
 interface Position {
   x: number;
@@ -319,6 +321,17 @@ export async function createSidebar(): Promise<void> {
             </div>
           </div>
         </div>
+        <div class="ai-chat-controls">
+          <div class="ai-chat-history-toggle">
+            <label for="ai-include-history" class="ai-toggle-label">
+              <span>${t('sidebar.includeChatHistory')}</span>
+              <label class="ai-toggle-switch">
+                <input type="checkbox" id="ai-include-history" checked>
+                <span class="ai-toggle-slider"></span>
+              </label>
+            </label>
+          </div>
+        </div>
         <div id="ai-answer"></div>
         <div class="ai-input-section">
           <textarea id="ai-question" placeholder="${t('sidebar.askPlaceholder')}" rows="4"></textarea>
@@ -411,8 +424,28 @@ function setupEventListeners(): void {
     try {
       const content = getPageContent();
       
+      // Check if chat history should be included
+      const chatHistoryToggle = document.getElementById('ai-include-history') as HTMLInputElement;
+      const includeChatHistory = chatHistoryToggle?.checked ?? true;
+      
+      // Get chat history if needed
+      let historyTokens = 0;
+      if (includeChatHistory) {
+        const historyMessages = getChatHistoryMessages();
+        historyTokens = historyMessages.reduce((sum, msg) => {
+          return sum + simpleTokenEstimation(msg.content, selectedModel);
+        }, 0);
+      }
+      
       // Use simple token estimation (no tiktoken dependency)
       const estimate = simpleTokenEstimate(question, content, selectedModel);
+      
+      // Add history tokens to the estimate
+      if (historyTokens > 0) {
+        estimate.tokens += historyTokens;
+        estimate.totalTokens += historyTokens;
+      }
+      
       const { text, status } = getSimpleTokenStatus(estimate);
       
       tokenCount.textContent = text;
@@ -491,6 +524,16 @@ function setupEventListeners(): void {
   // Update token count when model changes
   modelSelector?.addEventListener('change', debouncedTokenUpdate);
 
+  // Update token count when chat history toggle changes
+  const chatHistoryToggle = document.getElementById('ai-include-history') as HTMLInputElement;
+  chatHistoryToggle?.addEventListener('change', async () => {
+    // Save the setting
+    const settings = await getSettings();
+    await updateSettings({ includeChatHistory: chatHistoryToggle.checked });
+    // Update token count
+    debouncedTokenUpdate();
+  });
+
   // Debounce function to prevent too many rapid token updates
   let tokenUpdateTimeout: number | undefined;
   function debouncedTokenUpdate() {
@@ -504,6 +547,9 @@ function setupEventListeners(): void {
 
   // Update token count when context changes
   document.addEventListener('contextUpdate', debouncedTokenUpdate);
+
+  // Update token count when chat history changes (new messages added)
+  document.addEventListener('chatHistoryUpdate', debouncedTokenUpdate);
 
   // Initial token count update
   setTimeout(() => {
@@ -554,6 +600,15 @@ function setupEventListeners(): void {
       }
     }
   });
+
+  // Load saved chat history setting
+  if (chatHistoryToggle) {
+    getSettings().then(settings => {
+      chatHistoryToggle.checked = settings.includeChatHistory;
+    }).catch(error => {
+      console.error('Failed to load chat history setting:', error);
+    });
+  }
 }
 
 async function initializeModelSelector(modelSelector: HTMLSelectElement): Promise<void> {

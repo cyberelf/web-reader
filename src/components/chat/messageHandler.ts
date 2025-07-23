@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
 
-import { addMessage, updateLastMessage } from './chatHistory';
+import { addMessage, updateLastMessage, getChatHistoryMessages } from './chatHistory';
 import { handleShortcut } from './promptShortcuts';
 import { resizeImage } from '../../utils/imageUtils';
 import { createAPIClient, type LLMRequest, type APIError } from '../../utils/apiClient';
@@ -8,6 +8,7 @@ import { createRateLimiter, type RateLimiter } from '../../utils/rateLimiter';
 import { modelManager } from '../../utils/modelManager';
 import type { ModelType } from '../../config';
 import { getTokenEstimate } from '../../utils/tokenCounter';
+import { getSettings } from '../../settings';
 
 interface TokenUsage {
   totalTokens: number;
@@ -120,6 +121,9 @@ export async function handleQuestion(question: string, context: string, model?: 
 
     await addMessage('user', finalQuestion);
 
+    // Get user settings to check if chat history should be included
+    const settings = await getSettings();
+
     // Create placeholder message for streaming
     const selectedModel = model || config.model || 'gpt-4o-mini';
     await addMessage('assistant', '', selectedModel);
@@ -136,6 +140,13 @@ export async function handleQuestion(question: string, context: string, model?: 
         role: 'system' as const,
         content: 'You are analyzing the provided image. Be specific and detailed in your observations.'
       });
+      
+      // Include chat history if enabled
+      if (settings.includeChatHistory) {
+        const historyMessages = getChatHistoryMessages();
+        messages.push(...historyMessages);
+      }
+      
       // Add user message with image
       messages.push({
         role: 'user' as const,
@@ -157,6 +168,13 @@ export async function handleQuestion(question: string, context: string, model?: 
         role: 'system' as const,
         content: context ? `You are analyzing the following content:\n\n${context}` : 'You are analyzing the current webpage.'
       });
+      
+      // Include chat history if enabled
+      if (settings.includeChatHistory) {
+        const historyMessages = getChatHistoryMessages();
+        messages.push(...historyMessages);
+      }
+      
       // Add user message with text
       messages.push({
         role: 'user' as const,
@@ -208,6 +226,11 @@ export async function handleQuestion(question: string, context: string, model?: 
     if (response.usage?.total_tokens) {
       await updateTokenUsage(response.usage.total_tokens);
     }
+
+    // Trigger token update after response is complete
+    // (to update token estimation when chat history is included)
+    const tokenUpdateEvent = new CustomEvent('chatHistoryUpdate');
+    document.dispatchEvent(tokenUpdateEvent);
 
   } catch (error) {
     console.error('Error in handleQuestion:', error);
