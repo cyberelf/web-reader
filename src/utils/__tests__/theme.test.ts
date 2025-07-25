@@ -23,6 +23,7 @@ describe('Theme Utility', () => {
 
       expect(document.getElementById('ai-page-reader-sidebar')?.classList.contains('light')).toBe(true);
       expect(document.getElementById('ai-theme-toggle')?.classList.contains('light')).toBe(true);
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     });
 
     it('should apply dark theme', () => {
@@ -30,6 +31,7 @@ describe('Theme Utility', () => {
 
       expect(document.getElementById('ai-page-reader-sidebar')?.classList.contains('dark')).toBe(true);
       expect(document.getElementById('ai-theme-toggle')?.classList.contains('dark')).toBe(true);
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     });
 
     it('should remove previous theme class when switching themes', () => {

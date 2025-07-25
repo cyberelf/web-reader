@@ -203,6 +203,9 @@ async function initializeExtension() {
     // Start initialization
     trySetupContextModes();
     
+    // Setup chart resize functionality (if not already done)
+    setupChartResize();
+    
   } catch (error) {
     console.error('Error initializing extension:', error);
     
@@ -226,6 +229,92 @@ function startInitialization() {
     initializeExtension();
   }, delay);
 }
+
+// Global flag to prevent multiple event listener setup
+let chartResizeSetup = false;
+
+// Chart resize functionality
+function setupChartResize(): void {
+  if (chartResizeSetup) {
+    console.log('Chart resize already set up, skipping...');
+    return;
+  }
+  
+  console.log('Setting up chart resize function... Call stack:', new Error().stack?.split('\n')[1]);
+  
+  // Main resize function
+  function toggleChartSize(diagramId: string) {
+    console.log('Chart resize function called for:', diagramId);
+    try {
+      const container = document.querySelector(`[data-diagram-id="${diagramId}"]`) as HTMLElement;
+      if (!container) {
+        console.warn(`Chart container not found: ${diagramId}`);
+        return;
+      }
+
+      const currentMode = container.getAttribute('data-fit-mode') || 'fit';
+      const newMode = currentMode === 'fit' ? 'original' : 'fit';
+      
+      // Update container mode
+      container.setAttribute('data-fit-mode', newMode);
+      
+      // Update button tooltip
+      const button = container.querySelector('.chart-resize-toggle') as HTMLElement;
+      if (button) {
+        button.title = newMode === 'fit' ? 'Switch to original size' : 'Switch to fit container';
+      }
+      
+      console.log(`Chart ${diagramId} resized from ${currentMode} to ${newMode}`);
+    } catch (error) {
+      console.error('Error resizing chart:', error);
+    }
+  }
+  
+  // Add to window for external access if needed
+  (window as any).toggleChartResize = toggleChartSize;
+  
+  // Event delegation for chart resize buttons with click tracking
+  let isProcessingClick = false;
+  
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('chart-resize-toggle')) {
+      // Prevent double clicks
+      if (isProcessingClick) {
+        console.log('Ignoring duplicate click event');
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      
+      isProcessingClick = true;
+      console.log('Chart resize button clicked via event delegation');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      
+      // Get diagram ID from the button itself
+      const diagramId = target.getAttribute('data-diagram-id');
+      if (diagramId) {
+        toggleChartSize(diagramId);
+      } else {
+        console.error('Diagram ID not found on button');
+      }
+      
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isProcessingClick = false;
+      }, 100);
+    }
+  }, { capture: true });
+  
+  chartResizeSetup = true;
+  console.log('Chart resize setup complete');
+}
+
+
+
+// Setup chart resize immediately when script loads
+setupChartResize();
 
 // Initialize extension when DOM is loaded or if it's already loaded
 if (document.readyState === 'loading') {

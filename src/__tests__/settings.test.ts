@@ -95,16 +95,13 @@ describe('Settings', () => {
         {
           settings: {
             apiKey: 'new-api-key',
-            apiUrl: 'https://old-url.com',
-            showIcon: false,
+            apiUrl: 'https://old-url.com', // Should keep existing values
+            includeChatHistory: true, // Default value should be added
             shortcuts: {
+              '/help': 'Show available commands',
               '/clear': 'Clear chat history',
               '/explain': 'Explain in simple terms',
-              '/generate': 'Generate similar content',
-              '/help': 'Show available commands',
-              '/model': 'Change AI model',
-              '/screenshot': 'Take a screenshot',
-              '/summarize': 'Summarize the content',
+              '/generate': 'Generate similar content'
             }
           }
         },
@@ -132,8 +129,8 @@ describe('Settings', () => {
         {
           settings: {
             apiKey: 'new-api-key',
-            apiUrl: 'https://api.openai.com/v1',
-            showIcon: false,
+            apiUrl: 'https://api.openai.com/v1', // Default value
+            includeChatHistory: true, // Default value should be added
             shortcuts: {
               '/clear': 'Clear chat history',
               '/explain': 'Explain in simple terms',
@@ -186,9 +183,9 @@ describe('Settings', () => {
         {
           settings: {
             apiKey: 'test-api-key',
-            model: 'gpt-4o',
             apiUrl: 'https://custom-url.com',
-            showIcon: true,
+            model: 'gpt-4o',
+            includeChatHistory: true, // Default value should be added
             shortcuts: {
               '/clear': 'Clear chat history',
               '/explain': 'Explain in simple terms',

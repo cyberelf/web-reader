@@ -25,7 +25,22 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    fallback: {
+      // Provide fallbacks for Node.js modules that might be used by mermaid
+      "path": false,
+      "fs": false,
+      "util": false,
+      "stream": false,
+      "buffer": false,
+      "crypto": false,
+      "process": false
+    }
+  },
+  optimization: {
+    // Completely disable all code splitting
+    splitChunks: false,
+    minimize: true
   },
   plugins: [
     new CopyWebpackPlugin({

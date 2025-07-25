@@ -25,10 +25,11 @@ const mockChrome = {
 (globalThis as any).chrome = mockChrome;
 
 import { addMessage, clearChatHistory, loadChatHistory } from '../chatHistory';
-import { renderMarkdown } from '../../../utils/markdown';
+import { renderMarkdown, renderMarkdownSync } from '../../../utils/markdown';
 
 jest.mock('../../../utils/markdown', () => ({
-  renderMarkdown: jest.fn(),
+  renderMarkdown: jest.fn().mockResolvedValue(''),
+  renderMarkdownSync: jest.fn().mockReturnValue(''),
 }));
 
 describe('Chat History', () => {
@@ -81,8 +82,8 @@ describe('Chat History', () => {
 
   describe('addMessage', () => {
     it('should add a new message to DOM', () => {
-      // Mock renderMarkdown for this test
-      (renderMarkdown as jest.Mock).mockReturnValue('Test message');
+      // Mock renderMarkdownSync for this test since we're testing sync behavior
+      (renderMarkdownSync as jest.Mock).mockReturnValue('Test message');
       
       // Call addMessage synchronously for testing
       const messageDiv = document.createElement('div');
@@ -99,17 +100,21 @@ describe('Chat History', () => {
       expect(messages[0].querySelector('.ai-message-content')?.textContent).toBe('Test message');
     });
 
-    it('should render markdown content for assistant messages', () => {
+    it('should render markdown content for assistant messages', async () => {
       const markdownText = '**Bold text**';
-      (renderMarkdown as jest.Mock).mockReturnValue('<strong>Bold text</strong>');
+      (renderMarkdown as jest.Mock).mockResolvedValue('<strong>Bold text</strong>');
 
       // Create assistant message
       const messageDiv = document.createElement('div');
       messageDiv.className = 'ai-chat-message ai-assistant-message';
-      messageDiv.innerHTML = `
-        <div class="ai-message-content">${renderMarkdown(markdownText)}</div>
-        <div class="ai-message-time">12:00:00</div>
-      `;
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'ai-message-content';
+      messageDiv.appendChild(contentDiv);
+      
+      // Simulate the async rendering
+      const renderedContent = await renderMarkdown(markdownText);
+      contentDiv.innerHTML = renderedContent;
+      
       answerDiv.appendChild(messageDiv);
 
       expect(renderMarkdown).toHaveBeenCalledWith(markdownText);

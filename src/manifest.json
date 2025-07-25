@@ -36,7 +36,8 @@
     {
       "resources": [
         "content.js",
-        "styles.css"
+        "styles.css",
+        "*.js"
       ],
       "matches": [
         "<all_urls>"

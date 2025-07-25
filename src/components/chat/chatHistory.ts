@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
 
-import { renderMarkdown } from '../../utils/markdown';
+import { renderMarkdown, renderMarkdownSync } from '../../utils/markdown';
 import { MODEL_DISPLAY_NAMES, ModelDisplayType } from '../../config';
 import type { ModelType } from '../../config';
 import { handleQuestion } from './messageHandler';
@@ -163,7 +163,14 @@ export async function updateLastMessage(content: string): Promise<void> {
     if (answerDiv) {
       const lastMessageDiv = answerDiv.querySelector('.ai-chat-messages .ai-assistant-message:last-of-type .ai-message-content') as HTMLElement;
       if (lastMessageDiv) {
-        lastMessageDiv.innerHTML = renderMarkdown(content);
+        // Use async renderMarkdown to support mermaid charts
+        renderMarkdown(content).then((renderedContent) => {
+          lastMessageDiv.innerHTML = renderedContent;
+        }).catch((error) => {
+          console.error('Failed to render markdown with mermaid:', error);
+          // Fallback to sync rendering without mermaid
+          lastMessageDiv.innerHTML = renderMarkdownSync(content);
+        });
       }
     }
     
@@ -224,7 +231,14 @@ function createMessageElement(message: ChatMessage): HTMLDivElement {
   contentDiv.className = 'ai-message-content';
   contentDiv.textContent = message.content;
   if (message.role === 'assistant') {
-    contentDiv.innerHTML = renderMarkdown(message.content);
+    // Use async renderMarkdown to support mermaid charts
+    renderMarkdown(message.content).then((renderedContent) => {
+      contentDiv.innerHTML = renderedContent;
+    }).catch((error) => {
+      console.error('Failed to render markdown with mermaid:', error);
+      // Fallback to sync rendering without mermaid
+      contentDiv.innerHTML = renderMarkdownSync(message.content);
+    });
   }
   
   const footerDiv = document.createElement('div');

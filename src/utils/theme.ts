@@ -1,6 +1,9 @@
 export type Theme = 'light' | 'dark';
 
 export function applyTheme(theme: Theme): void {
+  // Set data-theme attribute on document element for CSS variables
+  document.documentElement.setAttribute('data-theme', theme);
+  
   // Update sidebar theme
   const sidebar = document.getElementById('ai-page-reader-sidebar');
   if (sidebar) {
@@ -21,4 +24,6 @@ export function applyTheme(theme: Theme): void {
     modal.classList.remove('light', 'dark');
     modal.classList.add(theme);
   }
+  
+  // Charts now use CSS variables and update automatically
 } 

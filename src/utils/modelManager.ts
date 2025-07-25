@@ -95,54 +95,103 @@ export class ModelManager {
   }
 
   async initialize(): Promise<void> {
-    await this.loadData();
-    await this.loadApiKeys();
+    try {
+      console.log('Initializing model manager...');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Model manager initialization timeout')), 10000);
+      });
+      
+      const initPromise = Promise.all([
+        this.loadData(),
+        this.loadApiKeys()
+      ]);
+      
+      await Promise.race([initPromise, timeoutPromise]);
+      console.log('Model manager initialized successfully');
+    } catch (error) {
+      console.error('Model manager initialization failed:', error);
+      // Continue with default configuration instead of throwing
+      this.data = {
+        providers: { ...DEFAULT_PROVIDERS },
+        models: { ...DEFAULT_MODELS },
+        selectedProvider: 'openai'
+      };
+    }
   }
 
   private async loadData(): Promise<void> {
-    return new Promise((resolve) => {
-      // Load main data and models separately
-      chrome.storage.sync.get([this.storageKey, this.modelsStorageKey], (result) => {
-        // Load main data (providers, selections, etc.)
-        if (result[this.storageKey]) {
-          const savedData = result[this.storageKey];
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Storage loading timeout'));
+      }, 5000);
+      
+      try {
+        // Load main data and models separately
+        chrome.storage.sync.get([this.storageKey, this.modelsStorageKey], (result) => {
+          clearTimeout(timeout);
           
-          this.data = {
-            ...this.data,
-            ...savedData
-          };
-        }
-        
-        // Load models separately
-        if (result[this.modelsStorageKey]) {
-          const savedModels = result[this.modelsStorageKey];
-          this.data.models = savedModels;
-        } else {
-          this.data.models = { ...DEFAULT_MODELS };
-        }
-        
-        // Fix existing models that might not have isManual property set correctly
-        this.fixExistingModels();
-        
-        resolve();
-      });
+          if (chrome.runtime.lastError) {
+            console.warn('Storage loading error:', chrome.runtime.lastError);
+            resolve(); // Continue with defaults
+            return;
+          }
+          
+          // Load main data (providers, selections, etc.)
+          if (result[this.storageKey]) {
+            const savedData = result[this.storageKey];
+            
+            this.data = {
+              ...this.data,
+              ...savedData
+            };
+          }
+          
+          // Load models separately
+          if (result[this.modelsStorageKey]) {
+            const savedModels = result[this.modelsStorageKey];
+            this.data.models = savedModels;
+          } else {
+            this.data.models = { ...DEFAULT_MODELS };
+          }
+          
+          // Fix existing models that might not have isManual property set correctly
+          this.fixExistingModels();
+          
+          resolve();
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        console.warn('Error during storage loading:', error);
+        resolve(); // Continue with defaults
+      }
     });
   }
 
   private async loadApiKeys(): Promise<void> {
     try {
-      const apiKeysData = await loadSecureData('provider_api_keys');
-      const apiKeys: Record<string, string> = apiKeysData ? JSON.parse(apiKeysData) : {};
-      
-      // Update provider configurations with API keys from secure storage
-      Object.entries(apiKeys).forEach(([providerId, apiKey]) => {
-        if (this.data.providers[providerId]) {
-          this.data.providers[providerId].apiKey = apiKey;
-          this.data.providers[providerId].isConfigured = !!apiKey;
-        }
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('API keys loading timeout')), 3000);
       });
+      
+      const loadPromise = (async () => {
+        const apiKeysData = await loadSecureData('provider_api_keys');
+        const apiKeys: Record<string, string> = apiKeysData ? JSON.parse(apiKeysData) : {};
+        
+        // Update provider configurations with API keys from secure storage
+        Object.entries(apiKeys).forEach(([providerId, apiKey]) => {
+          if (this.data.providers[providerId]) {
+            this.data.providers[providerId].apiKey = apiKey;
+            this.data.providers[providerId].isConfigured = !!apiKey;
+          }
+        });
+      })();
+      
+      await Promise.race([loadPromise, timeoutPromise]);
     } catch (error) {
-      console.error('Failed to load API keys from secure storage:', error);
+      console.warn('Failed to load API keys from secure storage, continuing with defaults:', error);
+      // Continue without API keys - user can configure them later
     }
   }
 
