@@ -1,17 +1,22 @@
 {
     "version": "0.2.0",
     "configurations": [
+      
       {
-        "type": "node",
+        "name": "Launch Chrome",
         "request": "launch",
-        "name": "Debug Jest Tests",
-        "program": "${workspaceFolder}/node_modules/.bin/jest",
-        "args": [
-          "--runInBand",
-          "--testPathPattern=chatHistory.test.ts"
+        "type": "chrome",
+        "url": "http://localhost:8080",
+        "webRoot": "${workspaceFolder}"
+      },
+      {
+        "name": "Attach",
+        "port": 9229,
+        "request": "attach",
+        "skipFiles": [
+          "<node_internals>/**"
         ],
-        "console": "integratedTerminal",
-        "internalConsoleOptions": "neverOpen"
+        "type": "node"
       }
     ]
   }

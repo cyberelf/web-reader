@@ -25,14 +25,22 @@ interface DiagramData {
 
 // Parse simple mermaid syntax
 function parseMermaidCode(code: string): DiagramData {
-  const lines = code.trim().split('\n').map(line => line.trim()).filter(line => line);
-  const firstLine = lines[0].toLowerCase();
+  // Split lines but preserve whitespace for mindmaps
+  const rawLines = code.trim().split('\n');
+  const lines = rawLines.map(line => line.trim()).filter(line => line);
   
   const result: DiagramData = {
     nodes: [],
     edges: [],
     type: 'unsupported'
   };
+
+  // Handle empty input
+  if (lines.length === 0) {
+    return result;
+  }
+
+  const firstLine = lines[0].toLowerCase();
 
   // Detect diagram type
   if (firstLine.includes('graph') || firstLine.includes('flowchart')) {
@@ -43,7 +51,9 @@ function parseMermaidCode(code: string): DiagramData {
     return parsePieChart(lines.slice(1));
   } else if (firstLine.includes('mindmap')) {
     result.type = 'mindmap';
-    return parseMindmap(lines.slice(1));
+    // For mindmaps, we need to preserve whitespace to determine hierarchy
+    const mindmapLines = rawLines.slice(1).filter(line => line.trim());
+    return parseMindmap(mindmapLines);
   }
 
   return result;
@@ -64,12 +74,14 @@ function parseFlowchart(lines: string[]): DiagramData {
     let nodeMatch;
     
     while ((nodeMatch = nodeDefRegex.exec(trimmed)) !== null) {
-      const [, id, , rectLabel, diamondLabel, circleLabel, roundedSquareLabel] = nodeMatch;
-      const text = rectLabel || diamondLabel || circleLabel || roundedSquareLabel || id;
-      const shape = rectLabel ? 'rect' : (diamondLabel ? 'diamond' : (circleLabel ? 'circle' : 'rect'));
+      const [fullMatch, id] = nodeMatch;
+      const parsed = parseNodeTextAndShape(fullMatch);
+      const nodeId = parsed.id || id;
+      const text = parsed.text;
+      const shape = parsed.shape;
       
-      if (!nodes.has(id)) {
-        nodes.set(id, { id, text, shape, x: 0, y: 0 });
+      if (!nodes.has(nodeId)) {
+        nodes.set(nodeId, { id: nodeId, text, shape, x: 0, y: 0 });
       }
     }
   });
@@ -84,20 +96,26 @@ function parseFlowchart(lines: string[]): DiagramData {
     let arrowMatch;
     
     while ((arrowMatch = arrowRegex.exec(trimmed)) !== null) {
-      const [, fromId, fromRect, fromDiamond, fromCircle, edgeLabel, toId, toRect, toDiamond, toCircle] = arrowMatch;
+      const [, fromIdBase, fromRect, fromDiamond, fromCircle, edgeLabel, toIdBase, toRect, toDiamond, toCircle] = arrowMatch;
+      
+      // Parse from node
+      const fromNodeText = fromIdBase + (fromRect ? `[${fromRect}]` : fromDiamond ? `{${fromDiamond}}` : fromCircle ? `((${fromCircle}))` : '');
+      const fromParsed = parseNodeTextAndShape(fromNodeText);
+      const fromId = fromParsed.id || fromIdBase;
+      
+      // Parse to node  
+      const toNodeText = toIdBase + (toRect ? `[${toRect}]` : toDiamond ? `{${toDiamond}}` : toCircle ? `((${toCircle}))` : '');
+      const toParsed = parseNodeTextAndShape(toNodeText);
+      const toId = toParsed.id || toIdBase;
       
       // Create from node if it doesn't exist
       if (!nodes.has(fromId)) {
-        const fromText = fromRect || fromDiamond || fromCircle || fromId;
-        const fromShape = fromRect ? 'rect' : (fromDiamond ? 'diamond' : (fromCircle ? 'circle' : 'rect'));
-        nodes.set(fromId, { id: fromId, text: fromText, shape: fromShape, x: 0, y: 0 });
+        nodes.set(fromId, { id: fromId, text: fromParsed.text, shape: fromParsed.shape, x: 0, y: 0 });
       }
       
       // Create to node if it doesn't exist
       if (!nodes.has(toId)) {
-        const toText = toRect || toDiamond || toCircle || toId;
-        const toShape = toRect ? 'rect' : (toDiamond ? 'diamond' : (toCircle ? 'circle' : 'rect'));
-        nodes.set(toId, { id: toId, text: toText, shape: toShape, x: 0, y: 0 });
+        nodes.set(toId, { id: toId, text: toParsed.text, shape: toParsed.shape, x: 0, y: 0 });
       }
       
       // Add edge
@@ -114,6 +132,62 @@ function parseFlowchart(lines: string[]): DiagramData {
   };
 }
 
+// Helper function to parse node text and shape from mermaid syntax
+function parseNodeTextAndShape(nodeText: string, defaultShape: 'rect' | 'rounded' = 'rect'): { id?: string; text: string; shape: 'rect' | 'circle' | 'diamond' | 'rounded' } {
+  // Check for different node shape syntaxes following mermaid specification
+  
+  // Rectangle: [text] or id[text]
+  const rectMatch = nodeText.match(/^(.*?)\[([^\]]*)\]$/);
+  if (rectMatch) {
+    const prefix = rectMatch[1].trim();
+    const text = rectMatch[2];
+    return { 
+      id: prefix || undefined, 
+      text, 
+      shape: 'rect' 
+    };
+  }
+  
+  // Diamond: {text} or id{text}
+  const diamondMatch = nodeText.match(/^(.*?)\{([^}]*)\}$/);
+  if (diamondMatch) {
+    const prefix = diamondMatch[1].trim();
+    const text = diamondMatch[2];
+    return { 
+      id: prefix || undefined, 
+      text, 
+      shape: 'diamond' 
+    };
+  }
+  
+  // Circle: ((text)) or id((text))
+  const circleMatch = nodeText.match(/^(.*?)\(\(([^)]*)\)\)$/);
+  if (circleMatch) {
+    const prefix = circleMatch[1].trim();
+    const text = circleMatch[2];
+    return { 
+      id: prefix || undefined, 
+      text, 
+      shape: 'circle' 
+    };
+  }
+  
+  // Rounded: (text) or id(text) - but not ((text))
+  const roundedMatch = nodeText.match(/^(.*?)\(([^)]*)\)$/);
+  if (roundedMatch && !nodeText.includes('((')) {
+    const prefix = roundedMatch[1].trim();
+    const text = roundedMatch[2];
+    return { 
+      id: prefix || undefined, 
+      text, 
+      shape: 'rounded' 
+    };
+  }
+  
+  // Default: use provided default shape (rect for flowcharts, rounded for mindmaps)
+  return { text: nodeText, shape: defaultShape };
+}
+
 // Parse mindmap syntax
 function parseMindmap(lines: string[]): DiagramData {
   const nodes: Node[] = [];
@@ -121,18 +195,21 @@ function parseMindmap(lines: string[]): DiagramData {
   const nodeMap = new Map<string, Node>();
   
   // Root node
+  let rootSpacing = 0;
   if (lines.length > 0) {
     const rootText = lines[0].trim();
+    const { text, shape } = parseNodeTextAndShape(rootText, 'rounded');
     const rootNode: Node = {
       id: 'root',
-      text: rootText,
-      shape: 'rounded',
+      text,
+      shape,
       x: 0,
       y: 0,
       level: 0
     };
     nodes.push(rootNode);
     nodeMap.set('root', rootNode);
+    rootSpacing = lines[0].length - lines[0].trimStart().length;
   }
 
   // Parse children with indentation - track parent hierarchy properly
@@ -143,14 +220,15 @@ function parseMindmap(lines: string[]): DiagramData {
     const trimmed = line.trim();
     if (!trimmed) return;
     
-    const indentLevel = line.length - line.trimStart().length;
+    const indentLevel = line.length - line.trimStart().length - rootSpacing;
     const level = Math.floor(indentLevel / 2) + 1; // 2 spaces = 1 level
     
     const nodeId = `node_${nodeCounter++}`;
+    const { text, shape } = parseNodeTextAndShape(trimmed, 'rounded');
     const node: Node = {
       id: nodeId,
-      text: trimmed,
-      shape: 'rounded',
+      text,
+      shape,
       x: 0,
       y: 0,
       level
@@ -201,9 +279,77 @@ function parsePieChart(lines: string[]): DiagramData {
   };
 }
 
+// Calculate flowchart node dimensions based on text content
+function calculateFlowchartNodeDimensions(text: string): { width: number; height: number } {
+  const maxCharsPerLine = 14; // Flowchart nodes
+  const lineHeight = 18;
+  
+  // Function to measure text width (same as mindmap)
+  function getTextWidth(text: string): number {
+    let width = 0;
+    for (let char of text) {
+      width += /[\u4e00-\u9fff]/.test(char) ? 1.5 : 1;
+    }
+    return width;
+  }
+  
+  // Smart text wrapping
+  function wrapText(text: string, maxWidth: number): string[] {
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    const parts = text.split(/(\s+|(?<=[\u4e00-\u9fff])|(?=[\u4e00-\u9fff]))/);
+    
+    for (const part of parts) {
+      if (!part.trim()) continue;
+      
+      const testLine = currentLine + part;
+      if (getTextWidth(testLine) <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine.trim());
+          currentLine = part;
+        } else {
+          if (getTextWidth(part) > maxWidth) {
+            const truncated = part.slice(0, Math.floor(maxWidth * 0.8)) + '...';
+            lines.push(truncated);
+            currentLine = '';
+          } else {
+            currentLine = part;
+          }
+        }
+      }
+    }
+    
+    if (currentLine.trim()) {
+      lines.push(currentLine.trim());
+    }
+    
+    return lines;
+  }
+  
+  const wrappedLines = wrapText(text, maxCharsPerLine);
+  const maxLines = 3; // Flowchart nodes can have more lines
+  const displayLines = wrappedLines.slice(0, maxLines);
+  
+  // Calculate dimensions (fixed width for flowcharts, dynamic height)
+  const width = 160; // Fixed width for flowcharts
+  const height = Math.max(80, displayLines.length * lineHeight + 16);
+  
+  return { width, height };
+}
+
 // Auto-layout nodes for flowchart
 function layoutFlowchartNodes(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
+
+  // Calculate actual dimensions for all nodes
+  const nodeDimensions = new Map<string, { width: number; height: number }>();
+  nodes.forEach(node => {
+    const dimensions = calculateFlowchartNodeDimensions(node.text);
+    nodeDimensions.set(node.id, dimensions);
+  });
 
   // Simple auto-layout: arrange in levels based on connections
   const levels = new Map<string, number>();
@@ -231,52 +377,146 @@ function layoutFlowchartNodes(nodes: Node[], edges: Edge[]): Node[] {
     });
   }
 
-  // Position nodes
+  // Position nodes with dynamic spacing based on actual node sizes
   const levelGroups = new Map<number, string[]>();
   levels.forEach((level, nodeId) => {
     if (!levelGroups.has(level)) levelGroups.set(level, []);
     levelGroups.get(level)!.push(nodeId);
   });
 
-  const nodeWidth = 160;
-  const nodeHeight = 80; // Increased to match rendering function
-  const levelHeight = 170; // Increased to accommodate taller nodes
-  const nodeSpacing = 120; // Slightly increased spacing
+  const minNodeSpacing = 40; // Minimum spacing between nodes
+  const baseHeight = 80;
+  
+  // Calculate level heights based on tallest node in each level
+  const levelHeights = new Map<number, number>();
+  levelGroups.forEach((nodeIds, level) => {
+    const maxHeight = Math.max(...nodeIds.map(id => nodeDimensions.get(id)?.height || baseHeight));
+    levelHeights.set(level, maxHeight);
+  });
 
-  return nodes.map(node => {
+      return nodes.map(node => {
     const level = levels.get(node.id) || 0;
     const nodesAtLevel = levelGroups.get(level) || [node.id];
     const indexAtLevel = nodesAtLevel.indexOf(node.id);
     
-    // Calculate proper spacing to prevent overlap
+    // Calculate total width needed for this level with proper spacing
     const totalNodes = nodesAtLevel.length;
-    const totalSpacing = (totalNodes - 1) * nodeSpacing;
-    const totalWidth = totalNodes * nodeWidth + totalSpacing;
+    let totalWidth = 0;
+    for (let i = 0; i < totalNodes; i++) {
+      const nodeId = nodesAtLevel[i];
+      const nodeWidth = nodeDimensions.get(nodeId)?.width || 160;
+      totalWidth += nodeWidth;
+      if (i < totalNodes - 1) {
+        totalWidth += minNodeSpacing;
+      }
+    }
+    
+    // Calculate Y position based on accumulated level heights
+    let y = 60; // Base offset
+    for (let i = 0; i < level; i++) {
+      const levelHeight = levelHeights.get(i) || baseHeight;
+      y += levelHeight + 40; // Add spacing between levels
+    }
+    
+    // Calculate X position - distribute nodes evenly with proper spacing
     const startX = -totalWidth / 2;
+    let currentX = startX;
+    
+    // Position nodes sequentially to find X coordinate
+    for (let i = 0; i < indexAtLevel; i++) {
+      const nodeId = nodesAtLevel[i];
+      const nodeWidth = nodeDimensions.get(nodeId)?.width || 160;
+      currentX += nodeWidth + minNodeSpacing;
+    }
+    
+    // Current node position
+    const nodeWidth = nodeDimensions.get(node.id)?.width || 160;
+    const x = currentX + nodeWidth / 2;
     
     return {
       ...node,
-      x: startX + indexAtLevel * (nodeWidth + nodeSpacing) + nodeWidth / 2,
-      y: level * levelHeight + 60
+      x,
+      y
     };
   });
 }
 
-// Layout mindmap nodes in vertical tree structure
+// Calculate actual node dimensions based on text content (same logic as rendering)
+function calculateNodeDimensions(text: string, level: number): { width: number; height: number } {
+  const maxCharsPerLine = level === 0 ? 16 : 14;
+  const lineHeight = 16;
+  
+  // Function to measure text width
+  function getTextWidth(text: string): number {
+    let width = 0;
+    for (let char of text) {
+      width += /[\u4e00-\u9fff]/.test(char) ? 1.5 : 1;
+    }
+    return width;
+  }
+  
+  // Smart text wrapping (same as rendering)
+  function wrapText(text: string, maxWidth: number): string[] {
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    const parts = text.split(/(\s+|(?<=[\u4e00-\u9fff])|(?=[\u4e00-\u9fff]))/);
+    
+    for (const part of parts) {
+      if (!part.trim()) continue;
+      
+      const testLine = currentLine + part;
+      if (getTextWidth(testLine) <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine.trim());
+          currentLine = part;
+        } else {
+          if (getTextWidth(part) > maxWidth) {
+            const truncated = part.slice(0, Math.floor(maxWidth * 0.8)) + '...';
+            lines.push(truncated);
+            currentLine = '';
+          } else {
+            currentLine = part;
+          }
+        }
+      }
+    }
+    
+    if (currentLine.trim()) {
+      lines.push(currentLine.trim());
+    }
+    
+    return lines;
+  }
+  
+  const wrappedLines = wrapText(text, maxCharsPerLine);
+  const maxLines = 2; // Mindmap nodes should be compact
+  const displayLines = wrappedLines.slice(0, maxLines);
+  
+  // Calculate dimensions
+  const longestLine = displayLines.reduce((max, line) => 
+    getTextWidth(line) > getTextWidth(max) ? line : max, displayLines[0] || '');
+  const textWidth = Math.max(60, getTextWidth(longestLine) * 8.5);
+  const width = textWidth + 20;
+  const height = Math.max(35, displayLines.length * lineHeight + 16);
+  
+  return { width, height };
+}
+
+// Layout mindmap nodes in vertical tree structure centered around Y=0
 function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
 
-  const nodeWidth = 120;
-  const nodeHeight = 35;
   const levelWidth = 250;
-  const verticalSpacing = 70;
+  const minVerticalSpacing = 20; // Minimum gap between nodes at same level
 
-  // Group nodes by level
-  const levelGroups = new Map<number, Node[]>();
+  // Calculate actual dimensions for all nodes
+  const nodeDimensions = new Map<string, { width: number; height: number }>();
   nodes.forEach(node => {
-    const level = node.level || 0;
-    if (!levelGroups.has(level)) levelGroups.set(level, []);
-    levelGroups.get(level)!.push(node);
+    const dimensions = calculateNodeDimensions(node.text, node.level || 0);
+    nodeDimensions.set(node.id, dimensions);
   });
 
   // Position root at center
@@ -286,13 +526,24 @@ function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
     rootNode.y = 0;
   }
 
-  // Position other levels with proper hierarchy support
-  levelGroups.forEach((levelNodes, level) => {
-    if (level === 0) return; // Skip root
-    
+  // Group nodes by level (excluding root)
+  const levelGroups = new Map<number, Node[]>();
+  nodes.forEach(node => {
+    const level = node.level || 0;
+    if (level > 0) { // Skip root
+      if (!levelGroups.has(level)) levelGroups.set(level, []);
+      levelGroups.get(level)!.push(node);
+    }
+  });
+
+  // Process levels in order
+  const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
+  
+  sortedLevels.forEach(level => {
+    const levelNodes = levelGroups.get(level)!;
     const x = level * levelWidth;
     
-    // Group nodes by their parent for better vertical distribution
+    // Group nodes by their parent
     const nodesByParent = new Map<string, Node[]>();
     levelNodes.forEach(node => {
       const parentId = node.parent || 'root';
@@ -300,22 +551,116 @@ function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
       nodesByParent.get(parentId)!.push(node);
     });
     
-    let currentY = 0;
+    // Collect all sibling groups with their requirements
+    const siblingGroups: Array<{
+      parentId: string;
+      siblings: Node[];
+      parentY: number;
+      totalHeight: number;
+      preferredCenterY: number;
+    }> = [];
+    
     nodesByParent.forEach((siblings, parentId) => {
       const parentNode = nodes.find(n => n.id === parentId);
       const parentY = parentNode ? parentNode.y : 0;
       
-      // Center siblings around parent's Y position
-      const totalSiblingsHeight = siblings.length * verticalSpacing;
-      const startY = parentY - totalSiblingsHeight / 2 + verticalSpacing / 2;
+      // Calculate total height needed for all siblings
+      let totalHeight = 0;
+      for (let i = 0; i < siblings.length; i++) {
+        const nodeHeight = nodeDimensions.get(siblings[i].id)?.height || 35;
+        totalHeight += nodeHeight;
+        if (i < siblings.length - 1) {
+          totalHeight += minVerticalSpacing;
+        }
+      }
       
-      siblings.forEach((node, index) => {
-        node.x = x;
-        node.y = startY + index * verticalSpacing;
+      // Prefer to center this group around the parent's Y position
+      const preferredCenterY = parentY;
+      
+      siblingGroups.push({
+        parentId,
+        siblings,
+        parentY,
+        totalHeight,
+        preferredCenterY
       });
-      
-      currentY = Math.max(currentY, startY + totalSiblingsHeight);
     });
+    
+    // Sort sibling groups by preferred center Y position (parent Y position)
+    siblingGroups.sort((a, b) => a.preferredCenterY - b.preferredCenterY);
+    
+    // Track nodes positioned at this level only (for intra-level collision detection)
+    const levelPositionedNodes: Array<{
+      top: number;
+      bottom: number;
+    }> = [];
+    
+    // First pass: try to position groups around their preferred Y positions
+    let positionedGroups: Array<{
+      group: typeof siblingGroups[0];
+      startY: number;
+      endY: number;
+    }> = [];
+    
+    siblingGroups.forEach(group => {
+      // Try to center around parent Y position
+      let preferredStartY = group.preferredCenterY - group.totalHeight / 2;
+      let actualStartY = preferredStartY;
+      
+      // Check for conflicts with already positioned groups
+      let hasConflict = true;
+      let attempts = 0;
+      while (hasConflict && attempts < 10) {
+        hasConflict = false;
+        const testEndY = actualStartY + group.totalHeight;
+        
+        for (const positioned of positionedGroups) {
+          const overlap = Math.max(0, Math.min(testEndY, positioned.endY) - Math.max(actualStartY, positioned.startY));
+          if (overlap > 0) {
+            // Move below the conflicting group
+            actualStartY = positioned.endY + minVerticalSpacing;
+            hasConflict = true;
+            break;
+          }
+        }
+        attempts++;
+      }
+      
+      positionedGroups.push({
+        group,
+        startY: actualStartY,
+        endY: actualStartY + group.totalHeight
+      });
+    });
+    
+    // Calculate the center of all positioned groups to balance around Y=0
+    if (positionedGroups.length > 0) {
+      const minY = Math.min(...positionedGroups.map(g => g.startY));
+      const maxY = Math.max(...positionedGroups.map(g => g.endY));
+      const centerOffset = -(minY + maxY) / 2; // Offset to center around Y=0
+      
+      // Apply the centering offset and position nodes
+      positionedGroups.forEach(({ group, startY }) => {
+        const adjustedStartY = startY + centerOffset;
+        
+        // Position each sibling in this group
+        let groupCurrentY = adjustedStartY;
+        group.siblings.forEach(sibling => {
+          const siblingHeight = nodeDimensions.get(sibling.id)?.height || 35;
+          
+          sibling.x = x;
+          sibling.y = groupCurrentY + siblingHeight / 2; // Center the node
+          
+          groupCurrentY += siblingHeight + minVerticalSpacing;
+        });
+        
+        // Add this group's bounds to the level positioned nodes
+        levelPositionedNodes.push({
+          top: adjustedStartY,
+          bottom: adjustedStartY + group.totalHeight
+        });
+      });
+    }
   });
 
   return nodes;
@@ -419,14 +764,19 @@ function renderFlowchartSVG(data: DiagramData): string {
     const x = node.x;
     const y = node.y;
     
+    // Calculate actual dimensions for this node (same as layout algorithm)
+    const nodeDimensions = calculateFlowchartNodeDimensions(node.text);
+    const actualWidth = nodeDimensions.width;
+    const actualHeight = nodeDimensions.height;
+    
     if (node.shape === 'circle') {
       svg += `<circle cx="${x}" cy="${y}" r="30" class="chart-node" />`;
     } else if (node.shape === 'diamond') {
       svg += `<polygon points="${x},${y-25} ${x+35},${y} ${x},${y+25} ${x-35},${y}" class="chart-node" />`;
     } else {
-      // Rectangle (default)
+      // Rectangle (default) - use calculated dimensions
       const rx = node.shape === 'rounded' ? '8' : '4';
-      svg += `<rect x="${x - nodeWidth/2}" y="${y - nodeHeight/2}" width="${nodeWidth}" height="${nodeHeight}" rx="${rx}" class="chart-node" />`;
+      svg += `<rect x="${x - actualWidth/2}" y="${y - actualHeight/2}" width="${actualWidth}" height="${actualHeight}" rx="${rx}" class="chart-node" />`;
     }
     
     // Enhanced text wrapping with better support for Chinese characters
@@ -791,7 +1141,7 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
 const CHART_ICONS: Record<string, string> = {
   'flowchart': '📊',
   'mindmap': '🗺️',
-  'pie': '🥧'
+  'pie chart': '🥧'
 };
 
 // Create chart container with header and resize button
@@ -806,6 +1156,19 @@ function createChartContainer(svg: string, diagramId: string, chartType: string)
     <div class="chart-content">${svg}</div>
   </div>`;
 }
+
+// Test exports - exported for testing purposes
+export const testExports = {
+  parseMermaidCode,
+  parseFlowchart,
+  parseMindmap,
+  parsePieChart,
+  layoutFlowchartNodes,
+  layoutMindmapNodes,
+  parseNodeTextAndShape,
+  calculateNodeDimensions,
+  calculateFlowchartNodeDimensions
+};
 
 // Main render function
 export function renderChart(code: string, diagramId: string): string {
