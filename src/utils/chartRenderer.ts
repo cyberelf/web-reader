@@ -221,7 +221,7 @@ function parseMindmap(lines: string[]): DiagramData {
     if (!trimmed) return;
     
     const indentLevel = line.length - line.trimStart().length - rootSpacing;
-    const level = Math.floor(indentLevel / 2) + 1; // 2 spaces = 1 level
+    const level = Math.floor(indentLevel / 2); // 2 spaces = 1 level
     
     const nodeId = `node_${nodeCounter++}`;
     const { text, shape } = parseNodeTextAndShape(trimmed, 'rounded');
@@ -281,8 +281,32 @@ function parsePieChart(lines: string[]): DiagramData {
 
 // Calculate flowchart node dimensions based on text content
 function calculateFlowchartNodeDimensions(text: string): { width: number; height: number } {
-  const maxCharsPerLine = 14; // Flowchart nodes
   const lineHeight = 18;
+  
+  // Adaptive width calculation for flowcharts
+  function getOptimalWidthFlowchart(text: string): number {
+    function getTextWidth(text: string): number {
+      let width = 0;
+      for (let char of text) {
+        width += /[\u4e00-\u9fff]/.test(char) ? 1.5 : 1;
+      }
+      return width;
+    }
+    
+    const totalTextWidth = getTextWidth(text);
+    let baseCharsPerLine = 14; // Base for flowcharts
+    
+    // If text is very long, increase width to avoid too many lines
+    if (totalTextWidth > baseCharsPerLine * 4) {
+      baseCharsPerLine = Math.min(baseCharsPerLine * 2, 24);
+    } else if (totalTextWidth > baseCharsPerLine * 2) {
+      baseCharsPerLine = Math.min(baseCharsPerLine * 1.5, 18);
+    }
+    
+    return Math.floor(baseCharsPerLine);
+  }
+  
+  const maxCharsPerLine = getOptimalWidthFlowchart(text);
   
   // Function to measure text width (same as mindmap)
   function getTextWidth(text: string): number {
@@ -330,11 +354,13 @@ function calculateFlowchartNodeDimensions(text: string): { width: number; height
   }
   
   const wrappedLines = wrapText(text, maxCharsPerLine);
-  const maxLines = 3; // Flowchart nodes can have more lines
-  const displayLines = wrappedLines.slice(0, maxLines);
+  const displayLines = wrappedLines; // Use all wrapped lines, no truncation
   
-  // Calculate dimensions (fixed width for flowcharts, dynamic height)
-  const width = 160; // Fixed width for flowcharts
+  // Calculate dimensions (dynamic width and height for flowcharts)
+  const longestLine = displayLines.reduce((max, line) => 
+    getTextWidth(line) > getTextWidth(max) ? line : max, displayLines[0] || '');
+  const textWidth = Math.max(120, getTextWidth(longestLine) * 9); // Dynamic width based on content
+  const width = textWidth + 40; // Add padding
   const height = Math.max(80, displayLines.length * lineHeight + 16);
   
   return { width, height };
@@ -443,8 +469,7 @@ function layoutFlowchartNodes(nodes: Node[], edges: Edge[]): Node[] {
 
 // Calculate actual node dimensions based on text content (same logic as rendering)
 function calculateNodeDimensions(text: string, level: number): { width: number; height: number } {
-  const maxCharsPerLine = level === 0 ? 16 : 14;
-  const lineHeight = 16;
+  const lineHeight = 18; // Increased line height for better spacing
   
   // Function to measure text width
   function getTextWidth(text: string): number {
@@ -454,6 +479,28 @@ function calculateNodeDimensions(text: string, level: number): { width: number; 
     }
     return width;
   }
+  
+  // Adaptive text wrapping - increase width for longer content
+  function getOptimalDimensions(text: string): { maxCharsPerLine: number; expectedLines: number } {
+    const totalTextWidth = getTextWidth(text);
+    
+    // Start with base character limits
+    let baseCharsPerLine = level === 0 ? 12 : 10;
+    
+    // If text is very long, increase width to avoid too many lines
+    if (totalTextWidth > baseCharsPerLine * 4) {
+      // For very long text, increase width significantly
+      baseCharsPerLine = Math.min(baseCharsPerLine * 2, 20);
+    } else if (totalTextWidth > baseCharsPerLine * 2) {
+      // For moderately long text, increase width moderately
+      baseCharsPerLine = Math.min(baseCharsPerLine * 1.5, 16);
+    }
+    
+    const expectedLines = Math.ceil(totalTextWidth / baseCharsPerLine);
+    return { maxCharsPerLine: Math.floor(baseCharsPerLine), expectedLines };
+  }
+  
+  const { maxCharsPerLine } = getOptimalDimensions(text);
   
   // Smart text wrapping (same as rendering)
   function wrapText(text: string, maxWidth: number): string[] {
@@ -474,9 +521,26 @@ function calculateNodeDimensions(text: string, level: number): { width: number; 
           currentLine = part;
         } else {
           if (getTextWidth(part) > maxWidth) {
-            const truncated = part.slice(0, Math.floor(maxWidth * 0.8)) + '...';
-            lines.push(truncated);
-            currentLine = '';
+            // Instead of truncating, break at word boundary if possible
+            const words = part.split('');
+            let partialWord = '';
+            for (const char of words) {
+              if (getTextWidth(partialWord + char) <= maxWidth) {
+                partialWord += char;
+              } else {
+                if (partialWord) {
+                  lines.push(partialWord);
+                  partialWord = char;
+                } else {
+                  // Single character that's too wide - just add it
+                  lines.push(char);
+                  partialWord = '';
+                }
+              }
+            }
+            if (partialWord) {
+              currentLine = partialWord;
+            }
           } else {
             currentLine = part;
           }
@@ -492,15 +556,14 @@ function calculateNodeDimensions(text: string, level: number): { width: number; 
   }
   
   const wrappedLines = wrapText(text, maxCharsPerLine);
-  const maxLines = 2; // Mindmap nodes should be compact
-  const displayLines = wrappedLines.slice(0, maxLines);
+  const displayLines = wrappedLines; // Use all wrapped lines, no truncation
   
-  // Calculate dimensions
+  // Calculate dimensions with adaptive width
   const longestLine = displayLines.reduce((max, line) => 
     getTextWidth(line) > getTextWidth(max) ? line : max, displayLines[0] || '');
-  const textWidth = Math.max(60, getTextWidth(longestLine) * 8.5);
-  const width = textWidth + 20;
-  const height = Math.max(35, displayLines.length * lineHeight + 16);
+  const textWidth = Math.max(80, getTextWidth(longestLine) * 9); // Increased multiplier and minimum width
+  const width = textWidth + 40; // Increased padding from 20 to 40
+  const height = Math.max(40, displayLines.length * lineHeight + 24); // Increased padding from 16 to 24
   
   return { width, height };
 }
@@ -517,6 +580,23 @@ function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
   nodes.forEach(node => {
     const dimensions = calculateNodeDimensions(node.text, node.level || 0);
     nodeDimensions.set(node.id, dimensions);
+  });
+
+  // Normalize widths within each level (make all nodes in same level use the widest width)
+  const maxWidthsByLevel = new Map<number, number>();
+  nodes.forEach(node => {
+    const level = node.level || 0;
+    const dimensions = nodeDimensions.get(node.id)!;
+    const currentMax = maxWidthsByLevel.get(level) || 0;
+    maxWidthsByLevel.set(level, Math.max(currentMax, dimensions.width));
+  });
+  
+  // Update node dimensions to use normalized widths
+  nodes.forEach(node => {
+    const level = node.level || 0;
+    const maxWidth = maxWidthsByLevel.get(level)!;
+    const dimensions = nodeDimensions.get(node.id)!;
+    nodeDimensions.set(node.id, { width: maxWidth, height: dimensions.height });
   });
 
   // Position root at center
@@ -781,8 +861,32 @@ function renderFlowchartSVG(data: DiagramData): string {
     
     // Enhanced text wrapping with better support for Chinese characters
     const text = node.text;
-    const maxCharsPerLine = 14; // Reduced for larger font size
     const lineHeight = 18; // Increased line height for 16px font
+    
+    // Adaptive width calculation for flowcharts
+    function getOptimalWidthFlowchart(text: string): number {
+      function getTextWidth(text: string): number {
+        let width = 0;
+        for (let char of text) {
+          width += /[\u4e00-\u9fff]/.test(char) ? 1.5 : 1;
+        }
+        return width;
+      }
+      
+      const totalTextWidth = getTextWidth(text);
+      let baseCharsPerLine = 14; // Base for flowcharts
+      
+      // If text is very long, increase width to avoid too many lines
+      if (totalTextWidth > baseCharsPerLine * 4) {
+        baseCharsPerLine = Math.min(baseCharsPerLine * 2, 24);
+      } else if (totalTextWidth > baseCharsPerLine * 2) {
+        baseCharsPerLine = Math.min(baseCharsPerLine * 1.5, 18);
+      }
+      
+      return Math.floor(baseCharsPerLine);
+    }
+    
+    const maxCharsPerLine = getOptimalWidthFlowchart(text);
     
     // Function to measure text width (approximate)
     function getTextWidth(text: string): number {
@@ -833,14 +937,7 @@ function renderFlowchartSVG(data: DiagramData): string {
     }
     
     const wrappedLines = wrapText(text, maxCharsPerLine);
-    const maxLines = 3; // Allow up to 3 lines
-    const displayLines = wrappedLines.slice(0, maxLines);
-    
-    // Add ellipsis if text was truncated
-    if (wrappedLines.length > maxLines) {
-      const lastLine = displayLines[maxLines - 1];
-      displayLines[maxLines - 1] = lastLine.slice(0, -3) + '...';
-    }
+    const displayLines = wrappedLines; // Use all wrapped lines, no truncation
     
     // Render text lines
     if (displayLines.length === 1) {
@@ -882,57 +979,83 @@ function renderMindmapSVG(data: DiagramData): string {
   svg += `<defs>
     <style>
       .mindmap-root { 
-        fill: var(--chart-root-bg, #e74c3c); 
-        stroke: var(--chart-root-border, #c0392b); 
-        stroke-width: 3; 
+        fill: var(--chart-root-bg, #4a90e2); 
+        stroke: none;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
       }
       .mindmap-branch { 
-        fill: var(--chart-branch-bg, #3498db); 
-        stroke: var(--chart-branch-border, #2980b9); 
-        stroke-width: 2; 
+        fill: var(--chart-branch-bg, #5cb85c); 
+        stroke: none;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
       }
       .mindmap-leaf { 
-        fill: var(--chart-leaf-bg, #2ecc71); 
-        stroke: var(--chart-leaf-border, #27ae60); 
-        stroke-width: 2; 
+        fill: var(--chart-leaf-bg, #f0ad4e); 
+        stroke: none;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
       }
       .mindmap-text { 
         fill: white; 
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-        font-size: 15px; 
+        font-size: 14px; 
         font-weight: 600;
         text-anchor: middle; 
         dominant-baseline: middle; 
       }
       .mindmap-connection { 
-        stroke: var(--chart-edge-color, #7f8c8d); 
-        stroke-width: 3; 
+        stroke: var(--chart-edge-color, #6c757d); 
+        stroke-width: 2; 
         fill: none; 
         stroke-linecap: round;
+        opacity: 0.7;
       }
     </style>
   </defs>`;
 
-  // Render connections first - connect to box edges like in the reference image
+  // Pre-calculate node dimensions for all nodes to use in both connections and rendering
+  const nodeDimensionsMap = new Map<string, { width: number; height: number }>();
+  positionedNodes.forEach(node => {
+    const dimensions = calculateNodeDimensions(node.text, node.level || 0);
+    nodeDimensionsMap.set(node.id, dimensions);
+  });
+
+  // Normalize widths within each level (make all nodes in same level use the widest width)
+  const maxWidthsByLevel = new Map<number, number>();
+  positionedNodes.forEach(node => {
+    const level = node.level || 0;
+    const dimensions = nodeDimensionsMap.get(node.id)!;
+    const currentMax = maxWidthsByLevel.get(level) || 0;
+    maxWidthsByLevel.set(level, Math.max(currentMax, dimensions.width));
+  });
+  
+  // Update node dimensions to use normalized widths
+  positionedNodes.forEach(node => {
+    const level = node.level || 0;
+    const maxWidth = maxWidthsByLevel.get(level)!;
+    const dimensions = nodeDimensionsMap.get(node.id)!;
+    nodeDimensionsMap.set(node.id, { width: maxWidth, height: dimensions.height });
+  });
+
+  // Render connections first - connect to box edges using actual node dimensions
   data.edges.forEach(edge => {
     const fromNode = positionedNodes.find(n => n.id === edge.from);
     const toNode = positionedNodes.find(n => n.id === edge.to);
     
     if (fromNode && toNode) {
-      const nodeWidth = 120;
-      const nodeHeight = 30;
+      // Get pre-calculated node dimensions
+      const fromNodeDimensions = nodeDimensionsMap.get(fromNode.id)!;
+      const toNodeDimensions = nodeDimensionsMap.get(toNode.id)!;
       
-      // Calculate connection points at box edges
+      // Calculate connection points at box edges using actual dimensions
       let fromX, fromY, toX, toY;
       
       if (fromNode.x < toNode.x) {
         // From left to right
-        fromX = fromNode.x + nodeWidth / 2;  // Right edge of from node
-        toX = toNode.x - nodeWidth / 2;      // Left edge of to node
+        fromX = fromNode.x + fromNodeDimensions.width / 2;  // Right edge of from node
+        toX = toNode.x - toNodeDimensions.width / 2;        // Left edge of to node
       } else {
         // From right to left
-        fromX = fromNode.x - nodeWidth / 2;  // Left edge of from node
-        toX = toNode.x + nodeWidth / 2;      // Right edge of to node
+        fromX = fromNode.x - fromNodeDimensions.width / 2;  // Left edge of from node
+        toX = toNode.x + toNodeDimensions.width / 2;        // Right edge of to node
       }
       
       fromY = fromNode.y;
@@ -956,8 +1079,32 @@ function renderMindmapSVG(data: DiagramData): string {
     
     // Enhanced text wrapping for mindmap nodes
     const text = node.text;
-    const maxCharsPerLine = node.level === 0 ? 16 : 14; // Root can be wider, adjusted for larger font
-    const lineHeight = 16; // Increased line height for 15px font
+    const lineHeight = 18; // Increased line height for better spacing
+    
+    // Adaptive width calculation (same as dimension calculation)
+    function getOptimalWidth(text: string, level: number): number {
+      function getTextWidth(text: string): number {
+        let width = 0;
+        for (let char of text) {
+          width += /[\u4e00-\u9fff]/.test(char) ? 1.5 : 1;
+        }
+        return width;
+      }
+      
+      const totalTextWidth = getTextWidth(text);
+      let baseCharsPerLine = level === 0 ? 12 : 10;
+      
+      // If text is very long, increase width to avoid too many lines
+      if (totalTextWidth > baseCharsPerLine * 4) {
+        baseCharsPerLine = Math.min(baseCharsPerLine * 2, 20);
+      } else if (totalTextWidth > baseCharsPerLine * 2) {
+        baseCharsPerLine = Math.min(baseCharsPerLine * 1.5, 16);
+      }
+      
+      return Math.floor(baseCharsPerLine);
+    }
+    
+    const maxCharsPerLine = getOptimalWidth(text, node.level || 0);
     
     // Function to measure text width (same as flowchart)
     function getTextWidth(text: string): number {
@@ -1005,21 +1152,12 @@ function renderMindmapSVG(data: DiagramData): string {
     }
     
     const wrappedLines = wrapText(text, maxCharsPerLine);
-    const maxLines = 2; // Mindmap nodes should be more compact
-    const displayLines = wrappedLines.slice(0, maxLines);
+    const displayLines = wrappedLines; // Use all wrapped lines, no truncation
     
-    // Add ellipsis if text was truncated
-    if (wrappedLines.length > maxLines) {
-      const lastLine = displayLines[maxLines - 1];
-      displayLines[maxLines - 1] = lastLine.slice(0, -3) + '...';
-    }
-    
-    // Calculate node dimensions based on text
-    const longestLine = displayLines.reduce((max, line) => 
-      getTextWidth(line) > getTextWidth(max) ? line : max, displayLines[0] || '');
-    const textWidth = Math.max(60, getTextWidth(longestLine) * 8.5); // Increased multiplier for larger font
-    const width = textWidth + 20;
-    const height = Math.max(35, displayLines.length * lineHeight + 16);
+    // Use pre-calculated node dimensions for consistent sizing
+    const nodeDimensions = nodeDimensionsMap.get(node.id)!;
+    const width = nodeDimensions.width;
+    const height = nodeDimensions.height;
     
     // Determine node style based on level
     let nodeClass = 'mindmap-leaf';
@@ -1137,21 +1275,16 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
 
 
 
-// Chart type icons mapping
-const CHART_ICONS: Record<string, string> = {
-  'flowchart': '📊',
-  'mindmap': '🗺️',
-  'pie chart': '🥧'
-};
-
-// Create chart container with header and resize button
+// Create chart container with header and enlarge button
 function createChartContainer(svg: string, diagramId: string, chartType: string): string {
-  const icon = CHART_ICONS[chartType.toLowerCase()] || '📊';
-  
   return `<div class="chart-container" data-diagram-id="${diagramId}" data-fit-mode="fit">
     <div class="chart-header">
-      <span class="chart-type-label">${icon} ${chartType}</span>
-      <button class="chart-resize-toggle" title="Switch to original size" data-diagram-id="${diagramId}">⛶</button>
+      <span class="chart-type-label">${chartType}</span>
+      <button class="chart-enlarge-toggle" title="Open chart in new tab" data-diagram-id="${diagramId}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7 17L17 7M17 7H7M17 7V17"/>
+        </svg>
+      </button>
     </div>
     <div class="chart-content">${svg}</div>
   </div>`;

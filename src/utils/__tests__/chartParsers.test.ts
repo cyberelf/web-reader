@@ -200,9 +200,9 @@ describe('Chart Parser Functions', () => {
       const child1 = result.nodes.find(n => n.text === 'Child 1');
       const child2 = result.nodes.find(n => n.text === 'Child 2');
       
-      expect(child1?.level).toBe(2);
+      expect(child1?.level).toBe(1);
       expect(child1?.parent).toBe('root');
-      expect(child2?.level).toBe(2);
+      expect(child2?.level).toBe(1);
       expect(child2?.parent).toBe('root');
       
       // Check edges connect root to children
@@ -234,9 +234,9 @@ describe('Chart Parser Functions', () => {
       });
       
       expect(nodesByLevel[0]).toHaveLength(1); // Root
-      expect(nodesByLevel[2]).toHaveLength(2); // Level 1A, Level 1B (2 spaces)
-      expect(nodesByLevel[3]).toHaveLength(3); // Level 2A, Level 2B, Level 2C (4 spaces)
-      expect(nodesByLevel[4]).toHaveLength(2); // Level 3A, Level 3B (6 spaces)
+      expect(nodesByLevel[1]).toHaveLength(2); // Level 1A, Level 1B (2 spaces)
+      expect(nodesByLevel[2]).toHaveLength(3); // Level 2A, Level 2B, Level 2C (4 spaces)
+      expect(nodesByLevel[3]).toHaveLength(2); // Level 3A, Level 3B (6 spaces)
       
       // Check parent-child relationships
       const level2A = result.nodes.find(n => n.text === 'Level 2A');
@@ -257,10 +257,10 @@ describe('Chart Parser Functions', () => {
     it('should handle inconsistent indentation correctly', () => {
       const lines = [
         'Root',
-        '  Child 1',        // 2 spaces = level 2
-        '      Deep Child', // 6 spaces = level 4
-        '  Child 2',        // 2 spaces = level 2
-        '    Normal Child'  // 4 spaces = level 3
+        '  Child 1',        // 2 spaces = level 1
+        '      Deep Child', // 6 spaces = level 3
+        '  Child 2',        // 2 spaces = level 1
+        '    Normal Child'  // 4 spaces = level 2
       ];
       const result = parseMindmap(lines);
       
@@ -271,19 +271,19 @@ describe('Chart Parser Functions', () => {
       const normalChild = result.nodes.find(n => n.text === 'Normal Child');
       const child2 = result.nodes.find(n => n.text === 'Child 2');
       
-      expect(deepChild?.level).toBe(4); // 6 spaces = level 4
+      expect(deepChild?.level).toBe(3); // 6 spaces = level 3
       expect(deepChild?.parent).toBe(child1?.id);
-      expect(normalChild?.level).toBe(3); // 4 spaces = level 3  
+      expect(normalChild?.level).toBe(2); // 4 spaces = level 2  
       expect(normalChild?.parent).toBe(child2?.id);
     });
 
           it('should handle node text correctly', () => {
         const lines = [
           'root(this is the root node)',
-          '  Child1((round child))',        // 2 spaces = level 2
-          '      Child2[square deep child]', // 6 spaces = level 4
-          '  Child3[square child]',        // 2 spaces = level 2
-          '    Child4{diamond deep child}'  // 4 spaces = level 3
+          '  Child1((round child))',        // 2 spaces = level 1
+          '      Child2[square deep child]', // 6 spaces = level 2
+          '  Child3[square child]',        // 2 spaces = level 1
+          '    Child4{diamond deep child}'  // 4 spaces = level 2
         ];
         const result = parseMindmap(lines);
         
@@ -326,8 +326,8 @@ describe('Chart Parser Functions', () => {
       expect(result.nodes).toHaveLength(3);
       expect(result.edges).toHaveLength(2);
       
-      // Both children should be at level 2 (2 spaces) and connected to root
-      const children = result.nodes.filter(n => n.level === 2);
+      // Both children should be at level 1 (2 spaces) and connected to root
+      const children = result.nodes.filter(n => n.level === 1);
       expect(children).toHaveLength(2);
       expect(children.every(c => c.parent === 'root')).toBe(true);
     });
@@ -345,22 +345,22 @@ describe('Chart Parser Functions', () => {
       const child2 = result.nodes.find(n => n.text === 'Child 2');
       
       expect(root?.level).toBe(0);
-      expect(child1?.level).toBe(2); // 2 spaces relative = level 2
-      expect(child2?.level).toBe(3); // 4 spaces relative = level 3
+      expect(child1?.level).toBe(1); // 2 spaces relative = level 1
+      expect(child2?.level).toBe(2); // 4 spaces relative = level 2
       expect(child2?.parent).toBe(child1?.id);
     });
 
     it('should handle complex branching structure', () => {
       const lines = [
         'Main Topic',
-        '  Branch A',     // 2 spaces = level 2
-        '    Leaf A1',    // 4 spaces = level 3
-        '    Leaf A2',    // 4 spaces = level 3
-        '  Branch B',     // 2 spaces = level 2
-        '    Leaf B1',    // 4 spaces = level 3
-        '      Deep B1',  // 6 spaces = level 4
-        '    Leaf B2',    // 4 spaces = level 3
-        '  Branch C'      // 2 spaces = level 2
+        '  Branch A',     // 2 spaces = level 1
+        '    Leaf A1',    // 4 spaces = level 2
+        '    Leaf A2',    // 4 spaces = level 2
+        '  Branch B',     // 2 spaces = level 1
+        '    Leaf B1',    // 4 spaces = level 2
+        '      Deep B1',  // 6 spaces = level 3
+        '    Leaf B2',    // 4 spaces = level 2
+        '  Branch C'      // 2 spaces = level 1
       ];
       const result = parseMindmap(lines);
       
@@ -379,7 +379,7 @@ describe('Chart Parser Functions', () => {
       expect(leafA2?.parent).toBe(branchA?.id);
       expect(leafB1?.parent).toBe(branchB?.id);
       expect(deepB1?.parent).toBe(leafB1?.id);
-      expect(deepB1?.level).toBe(4); // 6 spaces = level 4
+      expect(deepB1?.level).toBe(3); // 6 spaces = level 3
     });
   });
 

@@ -204,7 +204,7 @@ async function initializeExtension() {
     trySetupContextModes();
     
     // Setup chart resize functionality (if not already done)
-    setupChartResize();
+    setupChartEnlarge();
     
   } catch (error) {
     console.error('Error initializing extension:', error);
@@ -231,20 +231,20 @@ function startInitialization() {
 }
 
 // Global flag to prevent multiple event listener setup
-let chartResizeSetup = false;
+let chartEnlargeSetup = false;
 
-// Chart resize functionality
-function setupChartResize(): void {
-  if (chartResizeSetup) {
-    console.log('Chart resize already set up, skipping...');
+// Chart enlarge functionality
+function setupChartEnlarge(): void {
+  if (chartEnlargeSetup) {
+    console.log('Chart enlarge already set up, skipping...');
     return;
   }
   
-  console.log('Setting up chart resize function... Call stack:', new Error().stack?.split('\n')[1]);
+  console.log('Setting up chart enlarge function...');
   
-  // Main resize function
-  function toggleChartSize(diagramId: string) {
-    console.log('Chart resize function called for:', diagramId);
+  // Main enlarge function
+  function openChartInNewTab(diagramId: string) {
+    console.log('Chart enlarge function called for:', diagramId);
     try {
       const container = document.querySelector(`[data-diagram-id="${diagramId}"]`) as HTMLElement;
       if (!container) {
@@ -252,33 +252,82 @@ function setupChartResize(): void {
         return;
       }
 
-      const currentMode = container.getAttribute('data-fit-mode') || 'fit';
-      const newMode = currentMode === 'fit' ? 'original' : 'fit';
+      // Get the SVG content from the chart container only
+      const chartContent = container.querySelector('.chart-content');
+      const svgElement = chartContent?.querySelector('svg');
+      if (!svgElement) {
+        console.warn('SVG element not found in chart container');
+        return;
+      }
+
+      // Get chart type for filename
+      const chartTypeLabel = container.querySelector('.chart-type-label')?.textContent || 'Chart';
       
-      // Update container mode
-      container.setAttribute('data-fit-mode', newMode);
+      // Clone only the SVG element and enhance it for standalone display
+      const svgClone = svgElement.cloneNode(true) as SVGElement;
+      svgClone.removeAttribute('id');
       
-      // Update button tooltip
-      const button = container.querySelector('.chart-resize-toggle') as HTMLElement;
-      if (button) {
-        button.title = newMode === 'fit' ? 'Switch to original size' : 'Switch to fit container';
+      // Enhance SVG for standalone viewing
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svgClone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      
+      // Ensure the SVG has proper dimensions for standalone viewing
+      const viewBox = svgClone.getAttribute('viewBox');
+      if (viewBox && !svgClone.getAttribute('width')) {
+        const [, , width, height] = viewBox.split(' ').map(Number);
+        svgClone.setAttribute('width', Math.min(width, 1200).toString());
+        svgClone.setAttribute('height', Math.min(height, 800).toString());
       }
       
-      console.log(`Chart ${diagramId} resized from ${currentMode} to ${newMode}`);
+      // Create a clean SVG with white background
+      const svgWithBackground = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+     viewBox="${svgClone.getAttribute('viewBox')}" 
+     width="${svgClone.getAttribute('width')}" 
+     height="${svgClone.getAttribute('height')}">
+  <rect width="100%" height="100%" fill="white"/>
+  ${svgClone.innerHTML}
+</svg>`;
+      
+      // Create a blob URL for the SVG
+      const blob = new Blob([svgWithBackground], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      // Open in new tab
+      const newTab = window.open(url, '_blank');
+      if (!newTab) {
+        console.error('New tab blocked by browser');
+        // Fallback: trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${chartTypeLabel.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_chart.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+      
+      console.log(`Chart ${diagramId} opened in new tab`);
     } catch (error) {
-      console.error('Error resizing chart:', error);
+      console.error('Error opening chart in new tab:', error);
     }
   }
   
   // Add to window for external access if needed
-  (window as any).toggleChartResize = toggleChartSize;
+  (window as any).openChartInNewTab = openChartInNewTab;
   
-  // Event delegation for chart resize buttons with click tracking
+  // Event delegation for chart enlarge buttons with click tracking
   let isProcessingClick = false;
   
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    if (target.classList.contains('chart-resize-toggle')) {
+    const button = target.closest('.chart-enlarge-toggle') as HTMLElement;
+    
+    if (button) {
       // Prevent double clicks
       if (isProcessingClick) {
         console.log('Ignoring duplicate click event');
@@ -288,14 +337,14 @@ function setupChartResize(): void {
       }
       
       isProcessingClick = true;
-      console.log('Chart resize button clicked via event delegation');
+      console.log('Chart enlarge button clicked via event delegation');
       e.preventDefault();
       e.stopImmediatePropagation();
       
       // Get diagram ID from the button itself
-      const diagramId = target.getAttribute('data-diagram-id');
+      const diagramId = button.getAttribute('data-diagram-id');
       if (diagramId) {
-        toggleChartSize(diagramId);
+        openChartInNewTab(diagramId);
       } else {
         console.error('Diagram ID not found on button');
       }
@@ -307,14 +356,14 @@ function setupChartResize(): void {
     }
   }, { capture: true });
   
-  chartResizeSetup = true;
-  console.log('Chart resize setup complete');
+  chartEnlargeSetup = true;
+  console.log('Chart enlarge setup complete');
 }
 
 
 
-// Setup chart resize immediately when script loads
-setupChartResize();
+// Setup chart enlarge immediately when script loads
+setupChartEnlarge();
 
 // Initialize extension when DOM is loaded or if it's already loaded
 if (document.readyState === 'loading') {

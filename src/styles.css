@@ -1569,41 +1569,45 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-color, #e1e5e9);
   background: var(--chart-header-bg, #f8f9fa);
   border-radius: 11px 11px 0 0;
   margin: -1px -1px 0 -1px; /* Overlap container border */
+  min-height: 32px;
 }
 
 .chart-type-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-color, #2c3e50);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color, #6b7280);
   margin: 0;
 }
 
-.chart-resize-toggle {
+.chart-enlarge-toggle {
   background: none;
   border: 1px solid var(--border-color, #d1d5db);
-  border-radius: 6px;
-  padding: 6px;
+  border-radius: 4px;
+  padding: 4px;
   cursor: pointer;
-  color: var(--text-color, #374151);
-  transition: all 0.2s ease;
+  color: var(--text-color, #6b7280);
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
-  position: relative;
-  z-index: 10;
+  width: 24px;
+  height: 24px;
 }
 
-.chart-resize-toggle:hover {
+.chart-enlarge-toggle:hover {
   background: var(--hover-bg, #f3f4f6);
   border-color: var(--button-bg, #4a90e2);
   color: var(--button-bg, #4a90e2);
+}
+
+.chart-enlarge-toggle:active {
+  background: var(--button-bg, #4a90e2);
+  color: white;
 }
 
 .chart-content {
@@ -1612,23 +1616,10 @@ kbd {
   overflow-y: visible; /* Allow height to expand */
 }
 
-/* Fit mode (default) - SVG scales to fit container */
-.chart-container[data-fit-mode="fit"] .chart-content svg {
+/* SVG scales to fit container */
+.chart-container .chart-content svg {
   max-width: 100%;
   height: auto;
-}
-
-/* Original mode - SVG displays at original size with scrolling */
-.chart-container[data-fit-mode="original"] .chart-content svg {
-  max-width: none;
-  width: auto;
-  height: auto;
-}
-
-.chart-container[data-fit-mode="original"] .chart-content {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 500px; /* Limit height in original mode */
 }
 
 .chart-container:hover {

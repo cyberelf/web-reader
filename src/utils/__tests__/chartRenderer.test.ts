@@ -501,18 +501,21 @@ Root
       expect(result).toContain('data-fit-mode="fit"');
       expect(result).toContain('class="chart-header"');
       expect(result).toContain('class="chart-type-label"');
-      expect(result).toContain('class="chart-resize-toggle"');
+              expect(result).toContain('class="chart-enlarge-toggle"');
       expect(result).toContain('class="chart-content"');
     });
 
-    it('should include correct chart type icons', () => {
+    it('should include correct chart type labels with simple styling', () => {
       const flowchartResult = renderChart('graph TD\nA --> B', 'icon-1');
       const mindmapResult = renderChart('mindmap\nRoot\n  Child', 'icon-2');
       const pieResult = renderChart('pie\n"A": 50', 'icon-3');
       
-      expect(flowchartResult).toContain('📊 Flowchart');
-      expect(mindmapResult).toContain('🗺️ Mindmap');
-      expect(pieResult).toContain('🥧 Pie Chart');
+      expect(flowchartResult).toContain('Flowchart');
+      expect(flowchartResult).toContain('chart-type-label');
+      expect(mindmapResult).toContain('Mindmap');
+      expect(mindmapResult).toContain('chart-type-label');
+      expect(pieResult).toContain('Pie Chart');
+      expect(pieResult).toContain('chart-type-label');
     });
 
     it('should generate unique diagram IDs', () => {
@@ -525,11 +528,11 @@ Root
       expect(result2).not.toContain('unique-1');
     });
 
-    it('should include resize toggle button', () => {
+          it('should include enlarge toggle button', () => {
       const result = renderChart('graph TD\nA --> B', 'resize-test');
       
-      expect(result).toContain('chart-resize-toggle');
-      expect(result).toContain('title="Switch to original size"');
+              expect(result).toContain('chart-enlarge-toggle');
+              expect(result).toContain('title="Open chart in new tab"');
       expect(result).toContain('data-diagram-id="resize-test"');
     });
   });
@@ -1364,13 +1367,18 @@ Root
         expect(result).toContain('<path'); // Pie slices as path elements
         expect(result).toContain('pie-slice');
         
-        // Should have 4 path elements for 4 slices
-        const pathMatches = result.matchAll(/<path[^>]*d="([^"]+)"/g);
-        const paths = Array.from(pathMatches);
-        expect(paths.length).toBe(4);
+        // Should have 4 path elements for 4 pie slices (excluding header icon)
+        const pieSliceMatches = result.matchAll(/<path[^>]*class="pie-slice"[^>]*>/g);
+        const pieSlices = Array.from(pieSliceMatches);
+        expect(pieSlices.length).toBe(4);
         
-        // Each path should contain arc commands (A for arc)
-        paths.forEach(match => {
+        // Each pie slice path should contain arc commands (A for arc)
+        const pathWithArcMatches = result.matchAll(/d="([^"]*A[^"]+)"/g);
+        const pathsWithArcs = Array.from(pathWithArcMatches);
+        expect(pathsWithArcs.length).toBeGreaterThanOrEqual(4); // At least 4 arcs
+        
+        // Each arc path should contain the arc command pattern
+        pathsWithArcs.forEach(match => {
           expect(match[1]).toMatch(/A\s*[\d.]+\s*[\d.]+/); // Arc command pattern
         });
       });
@@ -1418,11 +1426,11 @@ Root
         
         const result = renderChart(code, 'viewport-1');
         
-        // Should have a properly sized viewBox
-        const viewBoxMatch = result.match(/viewBox="([^"]+)"/);
-        expect(viewBoxMatch).toBeTruthy();
+        // Should have a properly sized viewBox for the main chart (not the header icon)
+        const chartSvgMatch = result.match(/viewBox="([^"]+)"[^>]*class="chart-svg"/);
+        expect(chartSvgMatch).toBeTruthy();
         
-        const [minX, minY, width, height] = viewBoxMatch![1].split(' ').map(parseFloat);
+        const [minX, minY, width, height] = chartSvgMatch![1].split(' ').map(parseFloat);
         expect(width).toBeGreaterThan(200); // Should be reasonably wide
         expect(height).toBeGreaterThan(200); // Should be reasonably tall
         
