@@ -625,80 +625,35 @@ function calculateNodeDimensions(
   const wrappedLines = wrapText(text, maxCharsPerLine);
   const displayLines = wrappedLines; // Use all wrapped lines, no truncation
 
-  // Calculate dimensions with adaptive width
+  // Calculate dimensions with adaptive width - improved for mixed languages
   const longestLine = displayLines.reduce(
     (max, line) => (getTextWidth(line) > getTextWidth(max) ? line : max),
     displayLines[0] || "",
   );
-  const textWidth = Math.max(80, getTextWidth(longestLine) * 9); // Increased multiplier and minimum width
-  const width = textWidth + 40; // Increased padding from 20 to 40
+  
+  // More conservative width calculation for mixed language content
+  const longestLineWidth = getTextWidth(longestLine);
+  let multiplier = 8; // Base multiplier, reduced from 9
+  
+  // Adjust multiplier based on content characteristics
+  if (longestLineWidth > 20) {
+    // For longer content, use smaller multiplier to prevent excessive width
+    multiplier = Math.max(6, 8 - Math.floor(longestLineWidth / 15));
+  }
+  
+  const textWidth = Math.max(80, longestLineWidth * multiplier);
+  // Cap the maximum width to prevent one node from being too wide
+  const cappedTextWidth = Math.min(textWidth, 280); // Max width cap for mindmaps
+  const width = cappedTextWidth + 40; // Increased padding from 20 to 40
   const height = Math.max(40, displayLines.length * lineHeight + 24); // Increased padding from 16 to 24
 
   return { width, height };
 }
 
-// Simple two-stage positioning: no complex logic, just basic overlap prevention
-function simplePositioning(
-  groups: Array<{
-    parentId: string;
-    siblings: Node[];
-    parentY: number;
-    totalHeight: number;
-    idealCenterY: number;
-    priority: number;
-  }>,
-  minSpacing: number,
-): Array<{
-  parentId: string;
-  siblings: Node[];
-  actualStartY: number;
-  actualCenterY: number;
-}> {
-  if (groups.length === 0) return [];
-
-  const positionedGroups: Array<{
-    parentId: string;
-    siblings: Node[];
-    actualStartY: number;
-    actualCenterY: number;
-  }> = [];
-
-  // Simple processing: position each group avoiding overlaps
-  for (const group of groups) {
-    // Start with ideal position (centered around parent)
-    let bestStartY = group.idealCenterY - group.totalHeight / 2;
-
-    // Check for conflicts with previously positioned groups
-    for (const positioned of positionedGroups) {
-      const groupEndY = bestStartY + group.totalHeight;
-      const positionedEndY = positioned.actualStartY + group.totalHeight;
-
-      // If overlap exists, move below with spacing
-      if (bestStartY < positionedEndY + minSpacing && groupEndY > positioned.actualStartY) {
-        bestStartY = positionedEndY + minSpacing;
-      }
-    }
-
-    const finalCenterY = bestStartY + group.totalHeight / 2;
-
-    positionedGroups.push({
-      parentId: group.parentId,
-      siblings: group.siblings,
-      actualStartY: bestStartY,
-      actualCenterY: finalCenterY,
-    });
-  }
-
-  return positionedGroups;
-}
-
-// Removed: twoStageLayout function - now integrated into layoutMindmapNodes
 
 // Layout mindmap nodes with integrated two-stage algorithm
 function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
   if (nodes.length === 0) return nodes;
-
-  const levelWidth = 250;
 
   // Helper function to get node height
   function getNodeHeight(node: Node): number {
@@ -732,10 +687,28 @@ function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
 
   const maxLevel = Math.max(...nodes.map(n => n.level || 0));
 
+  // Calculate adaptive X positions based on actual node widths
+  const levelXPositions = new Map<number, number>();
+  levelXPositions.set(0, 0); // Root at center
+  
+  // Calculate cumulative X positions based on actual node widths
+  for (let level = 1; level <= maxLevel; level++) {
+    const prevLevel = level - 1;
+    const prevX = levelXPositions.get(prevLevel) || 0;
+    const prevLevelWidth = maxWidthsByLevel.get(prevLevel) || 140; // Default root width
+    const currentLevelWidth = maxWidthsByLevel.get(level) || 200;
+    
+    // Calculate spacing: half of previous level width + gap + half of current level width
+    const minGap = 40; // Minimum gap between levels
+    const spacing = prevLevelWidth / 2 + minGap + currentLevelWidth / 2;
+    
+    levelXPositions.set(level, prevX + spacing);
+  }
+
   // STAGE 1: Forward pass (root to leaves, top to bottom)
   for (let level = 0; level <= maxLevel; level++) {
     const nodesAtLevel = nodes.filter(n => (n.level || 0) === level);
-    const x = level * levelWidth;
+    const x = levelXPositions.get(level) || 0;
 
     if (level === 0) {
       // Root node at center
@@ -1161,7 +1134,7 @@ function renderMindmapSVG(data: DiagramData): string {
     nodeDimensionsMap.set(node.id, dimensions);
   });
 
-  // Normalize widths within each level (make all nodes in same level use the widest width)
+  // Normalize widths within each level with smart capping for mixed language content
   const maxWidthsByLevel = new Map<number, number>();
   positionedNodes.forEach((node) => {
     const level = node.level || 0;
@@ -1170,13 +1143,27 @@ function renderMindmapSVG(data: DiagramData): string {
     maxWidthsByLevel.set(level, Math.max(currentMax, dimensions.width));
   });
 
-  // Update node dimensions to use normalized widths
+  // Apply smart width normalization with reasonable limits
   positionedNodes.forEach((node) => {
     const level = node.level || 0;
-    const maxWidth = maxWidthsByLevel.get(level)!;
+    const levelMaxWidth = maxWidthsByLevel.get(level)!;
     const dimensions = nodeDimensionsMap.get(node.id)!;
+    
+    // Calculate reasonable width for this level
+    // If the max width is excessive, use a more reasonable width based on content distribution
+    const nodesAtLevel = positionedNodes.filter(n => (n.level || 0) === level);
+    const widthsAtLevel = nodesAtLevel.map(n => nodeDimensionsMap.get(n.id)!.width);
+    const averageWidth = widthsAtLevel.reduce((sum, w) => sum + w, 0) / widthsAtLevel.length;
+    
+    // Use the max width, but cap it if it's too far from the average (indicates an outlier)
+    let normalizedWidth = levelMaxWidth;
+    if (levelMaxWidth > averageWidth * 1.8) {
+      // If max width is more than 80% larger than average, use a compromise
+      normalizedWidth = Math.min(levelMaxWidth, averageWidth * 1.5);
+    }
+    
     nodeDimensionsMap.set(node.id, {
-      width: maxWidth,
+      width: normalizedWidth,
       height: dimensions.height,
     });
   });
@@ -1463,7 +1450,6 @@ export const testExports = {
   parseNodeTextAndShape,
   calculateNodeDimensions,
   calculateFlowchartNodeDimensions,
-  simplePositioning,
 };
 
 // Main render function
