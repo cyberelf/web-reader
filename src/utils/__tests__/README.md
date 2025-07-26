@@ -7,11 +7,13 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 **112 total tests** across **3 test files** with comprehensive SVG positioning validation and vertical overlap prevention.
 
 **Overall Results: 112/112 tests passing (100% success rate)** with excellent code coverage:
+
 - **96.13% statement coverage** for chart rendering
-- **80.84% branch coverage** 
+- **80.84% branch coverage**
 - **100% function coverage**
 
 ### Flowchart Parsing (8 tests)
+
 - Basic node parsing with different shapes (rectangles, diamonds, circles)
 - Edge connections with labels
 - Complex multi-path flowcharts
@@ -21,6 +23,7 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 - Standalone nodes without connections
 
 ### Mindmap Parsing (8 tests)
+
 - Hierarchical structure parsing
 - Root-only mindmaps
 - Deep nested hierarchies
@@ -32,6 +35,7 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 - Node ID extraction from shape syntax (e.g., `nodeId[text]`)
 
 ### Pie Chart Parsing (8 tests)
+
 - Basic pie chart data parsing
 - Decimal value support
 - Single slice handling
@@ -42,13 +46,15 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 - Very small values
 
 ### Unsupported Diagram Types (5 tests)
+
 - Sequence diagrams
-- Class diagrams  
+- Class diagrams
 - State diagrams
 - Gantt charts
 - Unknown diagram types
 
 ### Error Handling (5 tests)
+
 - Malformed syntax
 - Empty input
 - Whitespace-only input
@@ -56,6 +62,7 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 - Single line inputs
 
 ### Text Wrapping and Internationalization (5 tests)
+
 - Long text wrapping
 - Chinese character support
 - Mixed language text
@@ -63,12 +70,14 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
 - Very long node names
 
 ### Container and Header Generation (4 tests)
+
 - Proper HTML container structure
 - Chart type icons
 - Unique diagram IDs
 - Resize toggle buttons
 
 ### Edge Cases and Robustness (5 tests)
+
 - Long node identifiers
 - Numeric node IDs
 - Case sensitivity
@@ -102,12 +111,14 @@ This test suite provides comprehensive coverage for the mermaid chart parsing lo
    - Cross-chart-type consistency for shape parsing (flowcharts and mindmaps)
 
 ### Vertical Overlap Prevention Tests (4 tests) ✅ ALL PASSING
+
 - **Long text content handling**: Validates that nodes with extensive text content don't overlap excessively
-- **Deep hierarchy spacing**: Ensures nodes in deep hierarchical structures maintain proper vertical spacing  
+- **Deep hierarchy spacing**: Ensures nodes in deep hierarchical structures maintain proper vertical spacing
 - **Many sibling nodes**: Tests vertical distribution of numerous nodes at the same level
 - **Mixed content lengths**: Validates layout handling of nodes with varying text content lengths
 
 ### Algorithm Improvements Implemented
+
 - **Comprehensive overlap prevention**: New layout algorithm calculates actual node dimensions based on text content
 - **Dynamic spacing**: Uses real node heights instead of fixed spacing to prevent overlaps
 - **Cross-level collision detection**: Ensures no overlaps between nodes at different levels or parent groups
@@ -121,4 +132,4 @@ npm test -- --testPathPattern=chartRenderer.test.ts
 
 # Run with verbose output
 npx jest src/utils/__tests__/chartRenderer.test.ts --verbose
-``` 
+```

@@ -35,31 +35,31 @@ const mockChromeStorage = {
   get: jest.fn(),
   set: jest.fn(),
   remove: jest.fn(),
-  clear: jest.fn()
+  clear: jest.fn(),
 };
 
 // Mock chrome API
-Object.defineProperty(globalThis, 'chrome', {
+Object.defineProperty(globalThis, "chrome", {
   value: {
     storage: {
-      sync: mockChromeStorage
+      sync: mockChromeStorage,
     },
     runtime: {
       sendMessage: jest.fn(),
       onMessage: {
-        addListener: jest.fn()
-      }
+        addListener: jest.fn(),
+      },
     },
     tabs: {
       query: jest.fn(),
-      sendMessage: jest.fn()
-    }
+      sendMessage: jest.fn(),
+    },
   },
-  writable: true
+  writable: true,
 });
 
 // Mock window.fetch
-Object.defineProperty(globalThis, 'fetch', {
+Object.defineProperty(globalThis, "fetch", {
   value: jest.fn(),
-  writable: true
-}); 
+  writable: true,
+});

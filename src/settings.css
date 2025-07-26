@@ -3,7 +3,8 @@ body {
   width: 350px;
   padding: 12px, 0px;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
 }
 
@@ -104,7 +105,9 @@ label {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 13px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
+    monospace;
   background: #ffffff;
   height: 36px;
   box-sizing: border-box;
@@ -373,7 +376,7 @@ label {
   right: 0;
   bottom: 0;
   background-color: #cbd5e1;
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 20px;
 }
 
@@ -385,7 +388,7 @@ label {
   left: 2px;
   bottom: 2px;
   background-color: white;
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
@@ -441,7 +444,7 @@ input:checked + .toggle-slider:before {
 }
 
 .tab-button.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -1px;
   left: 0;
@@ -613,8 +616,12 @@ input:checked + .toggle-slider:before {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .model-item {
@@ -655,7 +662,7 @@ input:checked + .toggle-slider:before {
 .model-id {
   font-size: 11px;
   color: #64748b;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 }
 
 .model-badges {
@@ -836,8 +843,13 @@ input:checked + .toggle-slider:before {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Dark theme support */
@@ -972,7 +984,7 @@ input:checked + .toggle-slider:before {
   display: block;
   font-size: 12px;
   color: #64748b;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 }
 
 .ai-modal-actions {
@@ -1091,5 +1103,5 @@ input:checked + .toggle-slider:before {
 }
 
 .save-button.saved::after {
-  content: '';
-} 
+  content: "";
+}

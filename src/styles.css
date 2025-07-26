@@ -361,8 +361,13 @@
 }
 
 @keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 #ai-question {
@@ -406,7 +411,6 @@
 #ai-ask-button:hover {
   background: var(--button-hover-bg, #2563eb);
 }
-
 
 #ai-model-selector {
   flex: 0 0 auto;
@@ -613,7 +617,9 @@
   min-width: 120px;
   max-width: 160px;
   padding: 8px 28px 8px 12px;
-  background: var(--bg, #ffffff) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  background: var(--bg, #ffffff)
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")
+    no-repeat right 8px center;
   color: var(--text, #1e293b);
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 6px;
@@ -898,7 +904,9 @@
 .autocomplete-item .command {
   font-weight: 600;
   color: var(--text, #1e293b);
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
+    monospace;
   font-size: 13px;
   margin-bottom: 4px;
 }
@@ -1084,8 +1092,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .loading-spinner {
@@ -1099,8 +1112,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .video-mode-message {
@@ -1255,7 +1272,9 @@
   background: rgba(245, 158, 11, 0.1);
 }
 
-#ai-page-reader-sidebar.dark .ai-token-indicator.ai-token-moderate .ai-token-count {
+#ai-page-reader-sidebar.dark
+  .ai-token-indicator.ai-token-moderate
+  .ai-token-count {
   color: #fbbf24;
 }
 
@@ -1273,7 +1292,9 @@
   background: rgba(220, 38, 38, 0.15);
 }
 
-#ai-page-reader-sidebar.dark .ai-token-indicator.ai-token-very-high .ai-token-count {
+#ai-page-reader-sidebar.dark
+  .ai-token-indicator.ai-token-very-high
+  .ai-token-count {
   color: #fca5a5;
 }
 
@@ -1392,20 +1413,20 @@ kbd {
     max-width: 100vw;
     min-width: 320px;
   }
-  
+
   .ai-context-mode-wrapper {
     min-width: 280px;
   }
-  
+
   .ai-slider-container {
     min-width: 280px;
   }
-  
+
   .ai-slider-option {
     font-size: 11px;
     padding: 8px 4px;
   }
-  
+
   .ai-sidebar-container {
     padding: 12px;
   }
@@ -1416,20 +1437,20 @@ kbd {
     font-size: 10px;
     padding: 6px 2px;
   }
-  
+
   .ai-context-mode-wrapper {
     min-width: 260px;
   }
-  
+
   .ai-slider-container {
     min-width: 260px;
   }
-  
+
   .ai-bottom-controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   #ai-model-selector {
     min-width: auto;
     width: 100%;
@@ -1444,15 +1465,15 @@ kbd {
     width: 520px;
     min-width: 520px;
   }
-  
+
   .ai-context-mode-wrapper {
     min-width: 440px;
   }
-  
+
   .ai-slider-container {
     min-width: 440px;
   }
-  
+
   .ai-slider-option {
     font-size: 14px;
     padding: 12px 8px;
@@ -1508,7 +1529,7 @@ kbd {
   right: 0;
   bottom: 0;
   background-color: var(--border, #cbd5e1);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 20px;
 }
 
@@ -1520,7 +1541,7 @@ kbd {
   left: 2px;
   bottom: 2px;
   background-color: white;
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
@@ -1561,7 +1582,9 @@ kbd {
   background: var(--chart-bg, #ffffff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease;
-  max-width: calc(100% - 40px); /* Constrain to message box width minus padding */
+  max-width: calc(
+    100% - 40px
+  ); /* Constrain to message box width minus padding */
   width: auto; /* Size dynamically */
 }
 
@@ -1717,7 +1740,8 @@ kbd {
 
 .chart-source code {
   color: var(--code-color, #495057);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+  font-family:
+    "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Consolas", monospace;
 }
 
 /* Enhanced dark theme chart variables */
@@ -1784,13 +1808,13 @@ kbd {
     padding: 16px;
     border-radius: 8px;
   }
-  
+
   .chart-fallback-header {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
   }
-  
+
   .chart-source pre {
     font-size: 12px;
     padding: 12px;

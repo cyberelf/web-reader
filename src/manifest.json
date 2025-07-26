@@ -10,9 +10,7 @@
     "tabs",
     "clipboardWrite"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self';"
   },
@@ -21,27 +19,15 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
-      "css": [
-        "styles.css"
-      ],
-      "js": [
-        "content.js"
-      ]
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content.js"]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "content.js",
-        "styles.css",
-        "*.js"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
+      "resources": ["content.js", "styles.css", "*.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "action": {

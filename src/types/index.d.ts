@@ -2,7 +2,7 @@
 
 // Message types for communication between components
 export interface MessageRequest {
-  action: 'takeScreenshot' | 'fetchImage' | 'analyzeContent' | 'updateSettings';
+  action: "takeScreenshot" | "fetchImage" | "analyzeContent" | "updateSettings";
   url?: string;
   content?: string;
   settings?: ExtensionSettings;
@@ -16,7 +16,7 @@ export interface FetchImageResponse {
 export interface ExtensionSettings {
   apiKey: string;
   model: string;
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   customEndpoint?: string;
 }
 
@@ -30,6 +30,6 @@ export interface AIResponse {
 export interface UIState {
   isLoading: boolean;
   error: string | null;
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   sidebarVisible: boolean;
-} 
+}

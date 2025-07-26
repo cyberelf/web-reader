@@ -43,6 +43,7 @@ A Chrome extension that allows you to ask questions about web page content, imag
 ## Development
 
 ### Setup
+
 1. Clone this repository
 2. Install dependencies:
    ```bash
@@ -59,6 +60,7 @@ A Chrome extension that allows you to ask questions about web page content, imag
 The extension is built with TypeScript for enhanced type safety and better development experience.
 
 ### Project Structure
+
 ```
 ├── src/                    # TypeScript source files
 │   ├── components/         # UI and feature components
@@ -81,6 +83,7 @@ The extension is built with TypeScript for enhanced type safety and better devel
 ```
 
 ### Development Commands
+
 - `npm install` - Install dependencies
 - `npm run build` - Build TypeScript files
 - `npm run watch` - Watch for changes and rebuild
@@ -106,6 +109,7 @@ The extension is built with TypeScript for enhanced type safety and better devel
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Development Setup
+
 1. Fork and clone the repository
 2. Install dependencies: `npm install`
 3. Make your changes in TypeScript files
@@ -119,6 +123,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Acknowledgments
 
 Special thanks to:
+
 - OpenAI for their powerful API
 - Claude (Anthropic) for development assistance and code improvements
 - The Chrome Extensions community
@@ -127,6 +132,7 @@ Special thanks to:
 ## Support
 
 For issues, questions, or suggestions:
+
 1. Open an issue in this repository
 2. Check existing issues for solutions
 3. Provide detailed information about your problem

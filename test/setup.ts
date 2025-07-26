@@ -16,7 +16,7 @@ const mockChrome = {
       addListener: jest.fn(),
     },
     sendMessage: jest.fn(),
-    lastError: null
+    lastError: null,
   },
   storage: {
     local: {
@@ -31,7 +31,7 @@ const mockChrome = {
           callback();
         }
         return Promise.resolve();
-      })
+      }),
     },
     sync: {
       get: jest.fn((keys, callback) => {
@@ -45,15 +45,15 @@ const mockChrome = {
           callback();
         }
         return Promise.resolve();
-      })
-    }
+      }),
+    },
   },
   tabs: {
     captureVisibleTab: jest.fn(),
   },
   windows: {
-    WINDOW_ID_CURRENT: -2
-  }
+    WINDOW_ID_CURRENT: -2,
+  },
 };
 
 // Add Chrome to global scope
@@ -66,15 +66,15 @@ const localStorageMock = {
   clear: jest.fn(),
   removeItem: jest.fn(),
   length: 0,
-  key: jest.fn()
+  key: jest.fn(),
 };
 
 (globalThis as any).localStorage = localStorageMock;
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -91,7 +91,7 @@ class DataTransferMock {
   items = {
     add: jest.fn(),
     clear: jest.fn(),
-    remove: jest.fn()
+    remove: jest.fn(),
   };
   setData = jest.fn();
   getData = jest.fn();
@@ -100,4 +100,4 @@ class DataTransferMock {
 
 (globalThis as any).DataTransfer = DataTransferMock;
 
-export {}; 
+export {};

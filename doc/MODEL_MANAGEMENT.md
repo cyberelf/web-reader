@@ -5,6 +5,7 @@ This document describes the new comprehensive model management system implemente
 ## Overview
 
 The new model management system provides:
+
 - **Multi-provider support**: OpenAI, DeepSeek, Google Gemini, and custom OpenAI-compatible providers
 - **Automatic model syncing**: Fetch available models directly from provider APIs
 - **Manual model management**: Add and remove custom models for each provider
@@ -16,13 +17,16 @@ The new model management system provides:
 ### 1. Provider Management
 
 #### Supported Providers
+
 - **OpenAI**: Full support with automatic model discovery
 - **DeepSeek**: Support for DeepSeek Chat and Coder models
 - **Google Gemini**: Support for Gemini 1.5 Pro, Flash, and Flash 8B models
 - **Custom OpenAI Compatible**: Support for any OpenAI-compatible API
 
 #### Provider Configuration
+
 Each provider has its own configuration:
+
 - API Key (securely stored)
 - API URL (predefined for built-in providers, configurable for custom)
 - Connection status indicator
@@ -31,12 +35,14 @@ Each provider has its own configuration:
 ### 2. Model Discovery and Syncing
 
 #### Automatic Model Syncing
+
 - **OpenAI**: Fetches models from `/models` endpoint
 - **DeepSeek**: Uses predefined model list (API doesn't provide models endpoint)
 - **Gemini**: Uses predefined model list with vision capabilities
 - **Custom Providers**: Attempts to fetch from OpenAI-compatible `/models` endpoint
 
 #### Manual Model Addition
+
 - Add custom models to any provider
 - Specify model ID and display name
 - Models are marked as "manual" and can be deleted
@@ -45,12 +51,14 @@ Each provider has its own configuration:
 ### 3. Model Selection and Usage
 
 #### Model Selection
+
 - Dropdown shows models grouped by provider
 - Only shows models from configured providers
 - Indicates vision capabilities
 - Remembers last selected model
 
 #### Model Information
+
 - Display name and model ID
 - Provider information
 - Vision capability indicator
@@ -61,6 +69,7 @@ Each provider has its own configuration:
 ### Model Tab (Main Interface)
 
 #### Provider Selection
+
 ```
 ┌─ Provider: [OpenAI ▼] ─────────────────┐
 │                                        │
@@ -73,6 +82,7 @@ Each provider has its own configuration:
 ```
 
 #### Model Management
+
 ```
 ┌─ Available Models ──────────────────────┐
 │ [🔄 Sync Models] [➕ Add Model]         │
@@ -94,21 +104,25 @@ Each provider has its own configuration:
 ### Provider-Specific Configurations
 
 #### OpenAI
+
 - API Key: Your OpenAI API key (sk-...)
 - API URL: https://api.openai.com/v1 (read-only)
 - Models: Automatically synced from OpenAI API
 
 #### DeepSeek
+
 - API Key: Your DeepSeek API key (sk-...)
 - API URL: https://api.deepseek.com/v1 (read-only)
 - Models: DeepSeek Chat, DeepSeek Coder
 
 #### Google Gemini
+
 - API Key: Your Google AI API key (AIza...)
 - API URL: https://generativelanguage.googleapis.com/v1beta (read-only)
 - Models: Gemini 1.5 Pro, Flash, Flash 8B (all with vision)
 
 #### Custom OpenAI Compatible
+
 - API Key: Your custom provider API key
 - API URL: Your custom API endpoint (configurable)
 - Provider Name: Custom name for identification
@@ -143,18 +157,21 @@ Each provider has its own configuration:
 The new system automatically migrates from the old settings:
 
 ### What Gets Migrated
+
 - **API Key**: Moved to appropriate provider based on URL
 - **API URL**: Used to detect provider and configure accordingly
 - **Selected Model**: Preserved if available in new system
 - **Custom Models**: Converted to manual models for detected provider
 
 ### Migration Process
+
 1. **Automatic Detection**: System detects provider from old API URL
 2. **Key Migration**: API key moved to detected provider
 3. **Model Migration**: Custom models added as manual models
 4. **Cleanup**: Old settings are preserved until manual cleanup
 
 ### Post-Migration Steps
+
 1. **Verify Configuration**: Check that provider is correctly configured
 2. **Sync Models**: Refresh model list from provider
 3. **Update Selection**: Choose preferred model if needed
@@ -165,7 +182,7 @@ The new system automatically migrates from the old settings:
 ### Model Manager Class
 
 ```typescript
-import { modelManager } from './utils/modelManager';
+import { modelManager } from "./utils/modelManager";
 
 // Initialize (call once)
 await modelManager.initialize();
@@ -178,20 +195,20 @@ const config = modelManager.getCurrentConfig();
 const models = modelManager.getAllModels();
 
 // Get models for specific provider
-const openaiModels = modelManager.getModels('openai');
+const openaiModels = modelManager.getModels("openai");
 
 // Add manual model
-modelManager.addManualModel('openai', {
-  id: 'gpt-4-custom',
-  name: 'GPT-4 Custom'
+modelManager.addManualModel("openai", {
+  id: "gpt-4-custom",
+  name: "GPT-4 Custom",
 });
 
 // Sync models from API
-const result = await modelManager.syncModels('openai');
+const result = await modelManager.syncModels("openai");
 if (result.success) {
-  console.log('Models synced:', result.models);
+  console.log("Models synced:", result.models);
 } else {
-  console.error('Sync failed:', result.error);
+  console.error("Sync failed:", result.error);
 }
 ```
 
@@ -214,6 +231,7 @@ const allModels = modelManager.getAllModels();
 ## Storage Structure
 
 ### New Storage Format
+
 ```json
 {
   "modelManagerData": {
@@ -245,6 +263,7 @@ const allModels = modelManager.getAllModels();
 ```
 
 ### Legacy Storage (Migrated)
+
 ```json
 {
   "settings": {
@@ -259,18 +278,21 @@ const allModels = modelManager.getAllModels();
 ## Error Handling
 
 ### Provider Configuration Errors
+
 - **Missing API Key**: Clear error message with setup instructions
 - **Invalid API Key**: Authentication error with key validation
 - **Network Issues**: Retry logic with exponential backoff
 - **Rate Limits**: Automatic rate limiting with user feedback
 
 ### Model Sync Errors
+
 - **API Unavailable**: Fallback to default models
 - **Invalid Response**: Error display with retry option
 - **Timeout**: Network timeout handling
 - **Permission Issues**: Clear error messages
 
 ### Fallback Behavior
+
 - **No Configured Providers**: Shows setup instructions
 - **No Available Models**: Falls back to default model list
 - **Sync Failures**: Uses cached models or defaults
@@ -279,12 +301,14 @@ const allModels = modelManager.getAllModels();
 ## Security Considerations
 
 ### API Key Storage
+
 - **Encrypted Storage**: API keys stored in Chrome's secure storage
 - **No Transmission**: Keys never sent to third parties
 - **Local Only**: All processing happens locally in extension
 - **Secure Display**: Keys masked in UI with toggle option
 
 ### Provider Isolation
+
 - **Separate Configurations**: Each provider has isolated settings
 - **Independent Storage**: Provider data stored separately
 - **No Cross-Contamination**: Provider failures don't affect others
@@ -295,24 +319,28 @@ const allModels = modelManager.getAllModels();
 ### Common Issues
 
 #### "No models available"
+
 1. Check provider configuration
 2. Verify API key is correct
 3. Try syncing models manually
 4. Check network connectivity
 
 #### "Provider not configured"
+
 1. Select provider from dropdown
 2. Enter valid API key
 3. Save configuration
 4. Sync models
 
 #### "Model sync failed"
+
 1. Check API key validity
 2. Verify network connection
 3. Check provider status
 4. Try again after a few minutes
 
 #### Migration issues
+
 1. Check old settings are present
 2. Manually configure providers if needed
 3. Re-sync models after migration
@@ -321,23 +349,26 @@ const allModels = modelManager.getAllModels();
 ### Debug Information
 
 Enable debug logging:
+
 ```javascript
 // In browser console
-localStorage.setItem('modelManagerDebug', 'true');
+localStorage.setItem("modelManagerDebug", "true");
 ```
 
 Check storage:
+
 ```javascript
 // View current configuration
-chrome.storage.sync.get(['modelManagerData'], console.log);
+chrome.storage.sync.get(["modelManagerData"], console.log);
 
 // View legacy settings
-chrome.storage.sync.get(['settings', 'customModels'], console.log);
+chrome.storage.sync.get(["settings", "customModels"], console.log);
 ```
 
 ## Future Enhancements
 
 ### Planned Features
+
 - **Model Performance Metrics**: Track usage and performance
 - **Cost Tracking**: Monitor API usage and costs
 - **Model Recommendations**: Suggest optimal models for tasks
@@ -347,6 +378,7 @@ chrome.storage.sync.get(['settings', 'customModels'], console.log);
 - **Model Comparison**: Side-by-side model comparisons
 
 ### Provider Additions
+
 - **Anthropic Claude**: Support for Claude models
 - **Local Models**: Ollama and other local LLM support
 - **Azure OpenAI**: Microsoft Azure OpenAI Service
@@ -354,11 +386,10 @@ chrome.storage.sync.get(['settings', 'customModels'], console.log);
 - **Hugging Face**: Hugging Face Inference API
 
 ### UI Improvements
+
 - **Provider Status Dashboard**: Real-time provider health
 - **Model Usage Analytics**: Usage patterns and statistics
 - **Quick Setup Wizard**: Guided provider configuration
 - **Bulk Model Import**: Import models from configuration files
 - **Advanced Search**: Search and filter models
 - **Favorites**: Mark frequently used models
-
- 

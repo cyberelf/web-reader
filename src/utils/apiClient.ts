@@ -13,14 +13,16 @@ export interface APIProvider {
 export interface LLMRequest {
   model: string;
   messages: Array<{
-    role: 'user' | 'system' | 'assistant';
-    content: string | Array<{
-      type: 'text' | 'image_url';
-      text?: string;
-      image_url?: {
-        url: string;
-      };
-    }>;
+    role: "user" | "system" | "assistant";
+    content:
+      | string
+      | Array<{
+          type: "text" | "image_url";
+          text?: string;
+          image_url?: {
+            url: string;
+          };
+        }>;
   }>;
   stream?: boolean;
   max_tokens?: number;
@@ -42,7 +44,7 @@ export interface LLMResponse {
 export interface APIError extends Error {
   status?: number;
   code?: string;
-  type?: 'network' | 'api' | 'rate_limit' | 'timeout' | 'unknown';
+  type?: "network" | "api" | "rate_limit" | "timeout" | "unknown";
 }
 
 export interface APIClientConfig {
@@ -56,11 +58,11 @@ export interface APIClientConfig {
 
 // OpenAI Provider
 export const OPENAI_PROVIDER: APIProvider = {
-  name: 'OpenAI',
-  baseUrl: 'https://api.openai.com/v1',
+  name: "OpenAI",
+  baseUrl: "https://api.openai.com/v1",
   headers: (apiKey: string) => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
   }),
   formatRequest: (request: LLMRequest) => ({
     model: request.model,
@@ -68,16 +70,16 @@ export const OPENAI_PROVIDER: APIProvider = {
     stream: request.stream || false,
     max_tokens: request.max_tokens,
     temperature: request.temperature,
-    top_p: request.top_p
+    top_p: request.top_p,
   }),
   parseResponse: (response: any): LLMResponse => ({
-    content: response.choices?.[0]?.message?.content || '',
+    content: response.choices?.[0]?.message?.content || "",
     usage: response.usage,
     model: response.model,
-    finish_reason: response.choices?.[0]?.finish_reason
+    finish_reason: response.choices?.[0]?.finish_reason,
   }),
   parseStreamChunk: (chunk: string): string | null => {
-    if (chunk.startsWith('data: ') && chunk !== 'data: [DONE]') {
+    if (chunk.startsWith("data: ") && chunk !== "data: [DONE]") {
       try {
         const data = JSON.parse(chunk.slice(6));
         return data.choices?.[0]?.delta?.content || null;
@@ -87,32 +89,32 @@ export const OPENAI_PROVIDER: APIProvider = {
     }
     return null;
   },
-  supportsStreaming: true
+  supportsStreaming: true,
 };
 
 // DeepSeek Provider
 export const DEEPSEEK_PROVIDER: APIProvider = {
-  name: 'DeepSeek',
-  baseUrl: 'https://api.deepseek.com/v1',
+  name: "DeepSeek",
+  baseUrl: "https://api.deepseek.com/v1",
   headers: (apiKey: string) => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
   }),
   formatRequest: (request: LLMRequest) => ({
     model: request.model,
     messages: request.messages,
     stream: request.stream || false,
     max_tokens: request.max_tokens,
-    temperature: request.temperature
+    temperature: request.temperature,
   }),
   parseResponse: (response: any): LLMResponse => ({
-    content: response.choices?.[0]?.message?.content || '',
+    content: response.choices?.[0]?.message?.content || "",
     usage: response.usage,
     model: response.model,
-    finish_reason: response.choices?.[0]?.finish_reason
+    finish_reason: response.choices?.[0]?.finish_reason,
   }),
   parseStreamChunk: (chunk: string): string | null => {
-    if (chunk.startsWith('data: ') && chunk !== 'data: [DONE]') {
+    if (chunk.startsWith("data: ") && chunk !== "data: [DONE]") {
       try {
         const data = JSON.parse(chunk.slice(6));
         return data.choices?.[0]?.delta?.content || null;
@@ -122,68 +124,68 @@ export const DEEPSEEK_PROVIDER: APIProvider = {
     }
     return null;
   },
-  supportsStreaming: true
+  supportsStreaming: true,
 };
 
 // Gemini Provider
 export const GEMINI_PROVIDER: APIProvider = {
-  name: 'Gemini',
-  baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+  name: "Gemini",
+  baseUrl: "https://generativelanguage.googleapis.com/v1beta",
   headers: (apiKey: string) => ({
-    'Content-Type': 'application/json',
-    'x-goog-api-key': apiKey
+    "Content-Type": "application/json",
+    "x-goog-api-key": apiKey,
   }),
   formatRequest: (request: LLMRequest) => {
     // Convert OpenAI format to Gemini format
-    const contents = request.messages.map(msg => {
-      if (msg.role === 'system') {
+    const contents = request.messages.map((msg) => {
+      if (msg.role === "system") {
         // Gemini doesn't have system role, convert to user message with instruction
         return {
-          role: 'user',
-          parts: [{ text: `System instruction: ${msg.content}` }]
+          role: "user",
+          parts: [{ text: `System instruction: ${msg.content}` }],
         };
-      } else if (msg.role === 'assistant') {
+      } else if (msg.role === "assistant") {
         return {
-          role: 'model',
-          parts: Array.isArray(msg.content) 
-            ? msg.content.map(part => {
-                if (part.type === 'text') {
+          role: "model",
+          parts: Array.isArray(msg.content)
+            ? msg.content.map((part) => {
+                if (part.type === "text") {
                   return { text: part.text };
-                } else if (part.type === 'image_url') {
+                } else if (part.type === "image_url") {
                   // Gemini expects inline data for images
-                  const base64Data = part.image_url?.url.split(',')[1];
+                  const base64Data = part.image_url?.url.split(",")[1];
                   return {
                     inlineData: {
-                      mimeType: 'image/jpeg',
-                      data: base64Data
-                    }
+                      mimeType: "image/jpeg",
+                      data: base64Data,
+                    },
                   };
                 }
-                return { text: '' };
+                return { text: "" };
               })
-            : [{ text: msg.content as string }]
+            : [{ text: msg.content as string }],
         };
       } else {
         // user role
         return {
-          role: 'user',
-          parts: Array.isArray(msg.content) 
-            ? msg.content.map(part => {
-                if (part.type === 'text') {
+          role: "user",
+          parts: Array.isArray(msg.content)
+            ? msg.content.map((part) => {
+                if (part.type === "text") {
                   return { text: part.text };
-                } else if (part.type === 'image_url') {
+                } else if (part.type === "image_url") {
                   // Extract base64 data from data URL
-                  const base64Data = part.image_url?.url.split(',')[1];
+                  const base64Data = part.image_url?.url.split(",")[1];
                   return {
                     inlineData: {
-                      mimeType: 'image/jpeg',
-                      data: base64Data
-                    }
+                      mimeType: "image/jpeg",
+                      data: base64Data,
+                    },
                   };
                 }
-                return { text: '' };
+                return { text: "" };
               })
-            : [{ text: msg.content as string }]
+            : [{ text: msg.content as string }],
         };
       }
     });
@@ -192,8 +194,8 @@ export const GEMINI_PROVIDER: APIProvider = {
       contents,
       generationConfig: {
         maxOutputTokens: request.max_tokens || 4000,
-        temperature: request.temperature || 0.7
-      }
+        temperature: request.temperature || 0.7,
+      },
     };
 
     // Add streaming configuration if needed
@@ -205,24 +207,26 @@ export const GEMINI_PROVIDER: APIProvider = {
   },
   parseResponse: (response: any): LLMResponse => {
     const candidate = response.candidates?.[0];
-    const content = candidate?.content?.parts?.[0]?.text || '';
-    
+    const content = candidate?.content?.parts?.[0]?.text || "";
+
     // Gemini doesn't provide detailed usage stats in the same format
-    const usage = response.usageMetadata ? {
-      total_tokens: response.usageMetadata.totalTokenCount || 0,
-      prompt_tokens: response.usageMetadata.promptTokenCount || 0,
-      completion_tokens: response.usageMetadata.candidatesTokenCount || 0
-    } : undefined;
+    const usage = response.usageMetadata
+      ? {
+          total_tokens: response.usageMetadata.totalTokenCount || 0,
+          prompt_tokens: response.usageMetadata.promptTokenCount || 0,
+          completion_tokens: response.usageMetadata.candidatesTokenCount || 0,
+        }
+      : undefined;
 
     return {
       content,
       usage,
       model: response.modelVersion,
-      finish_reason: candidate?.finishReason?.toLowerCase()
+      finish_reason: candidate?.finishReason?.toLowerCase(),
     };
   },
   parseStreamChunk: (chunk: string): string | null => {
-    if (chunk.startsWith('data: ') && chunk !== 'data: [DONE]') {
+    if (chunk.startsWith("data: ") && chunk !== "data: [DONE]") {
       try {
         const data = JSON.parse(chunk.slice(6));
         const candidate = data.candidates?.[0];
@@ -233,7 +237,7 @@ export const GEMINI_PROVIDER: APIProvider = {
     }
     return null;
   },
-  supportsStreaming: true
+  supportsStreaming: true,
 };
 
 class RequestQueue {
@@ -288,7 +292,7 @@ export class APIClient {
       maxRetries: 3,
       retryDelay: 1000,
       requestQueue: true,
-      ...config
+      ...config,
     };
 
     if (this.config.requestQueue) {
@@ -298,24 +302,24 @@ export class APIClient {
 
   async sendRequest(request: LLMRequest): Promise<LLMResponse> {
     const executeRequest = () => this.executeRequest(request);
-    
+
     if (this.requestQueue) {
       return this.requestQueue.add(executeRequest);
     }
-    
+
     return executeRequest();
   }
 
   async sendStreamingRequest(
     request: LLMRequest,
-    onChunk: (content: string) => void
+    onChunk: (content: string) => void,
   ): Promise<LLMResponse> {
     const executeRequest = () => this.executeStreamingRequest(request, onChunk);
-    
+
     if (this.requestQueue) {
       return this.requestQueue.add(executeRequest);
     }
-    
+
     return executeRequest();
   }
 
@@ -328,8 +332,11 @@ export class APIClient {
         return this.config.provider.parseResponse(response);
       } catch (error) {
         lastError = this.createAPIError(error);
-        
-        if (attempt === this.config.maxRetries || !this.shouldRetry(lastError)) {
+
+        if (
+          attempt === this.config.maxRetries ||
+          !this.shouldRetry(lastError)
+        ) {
           break;
         }
 
@@ -342,10 +349,12 @@ export class APIClient {
 
   private async executeStreamingRequest(
     request: LLMRequest,
-    onChunk: (content: string) => void
+    onChunk: (content: string) => void,
   ): Promise<LLMResponse> {
     if (!this.config.provider.supportsStreaming) {
-      throw new Error(`Provider ${this.config.provider.name} does not support streaming`);
+      throw new Error(
+        `Provider ${this.config.provider.name} does not support streaming`,
+      );
     }
 
     const streamRequest = { ...request, stream: true };
@@ -356,8 +365,11 @@ export class APIClient {
         return await this.makeStreamingRequest(streamRequest, onChunk);
       } catch (error) {
         lastError = this.createAPIError(error);
-        
-        if (attempt === this.config.maxRetries || !this.shouldRetry(lastError)) {
+
+        if (
+          attempt === this.config.maxRetries ||
+          !this.shouldRetry(lastError)
+        ) {
           break;
         }
 
@@ -374,23 +386,25 @@ export class APIClient {
 
     try {
       const formattedRequest = this.config.provider.formatRequest(request);
-      
+
       // Determine the correct endpoint based on provider
       let endpoint = `${this.config.provider.baseUrl}/chat/completions`;
-      if (this.config.provider.name === 'Gemini') {
+      if (this.config.provider.name === "Gemini") {
         endpoint = `${this.config.provider.baseUrl}/models/${request.model}:generateContent`;
       }
-      
+
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: this.config.provider.headers(this.config.apiKey),
         body: JSON.stringify(formattedRequest),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+        throw new Error(
+          `API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ""}`,
+        );
       }
 
       return await response.json();
@@ -401,39 +415,41 @@ export class APIClient {
 
   private async makeStreamingRequest(
     request: LLMRequest,
-    onChunk: (content: string) => void
+    onChunk: (content: string) => void,
   ): Promise<LLMResponse> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
     try {
       const formattedRequest = this.config.provider.formatRequest(request);
-      
+
       // Determine the correct endpoint based on provider
       let endpoint = `${this.config.provider.baseUrl}/chat/completions`;
-      if (this.config.provider.name === 'Gemini') {
+      if (this.config.provider.name === "Gemini") {
         endpoint = `${this.config.provider.baseUrl}/models/${request.model}:streamGenerateContent?alt=sse`;
       }
-      
+
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: this.config.provider.headers(this.config.apiKey),
         body: JSON.stringify(formattedRequest),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+        throw new Error(
+          `API request failed: ${response.status} ${response.statusText}. ${errorData.error?.message || ""}`,
+        );
       }
 
       if (!response.body) {
-        throw new Error('No response body received');
+        throw new Error("No response body received");
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let accumulatedContent = '';
+      let accumulatedContent = "";
       let usage: any = null;
       let model: string | undefined;
       let finishReason: string | undefined;
@@ -444,7 +460,7 @@ export class APIClient {
           if (done) break;
 
           const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          const lines = chunk.split("\n");
 
           for (const line of lines) {
             const content = this.config.provider.parseStreamChunk(line);
@@ -454,20 +470,23 @@ export class APIClient {
             }
 
             // Try to extract metadata from the chunk
-            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            if (line.startsWith("data: ") && line !== "data: [DONE]") {
               try {
                 const data = JSON.parse(line.slice(6));
-                
+
                 // Handle different response formats
-                if (this.config.provider.name === 'Gemini') {
-                  if (data.usageMetadata) usage = {
-                    total_tokens: data.usageMetadata.totalTokenCount || 0,
-                    prompt_tokens: data.usageMetadata.promptTokenCount || 0,
-                    completion_tokens: data.usageMetadata.candidatesTokenCount || 0
-                  };
+                if (this.config.provider.name === "Gemini") {
+                  if (data.usageMetadata)
+                    usage = {
+                      total_tokens: data.usageMetadata.totalTokenCount || 0,
+                      prompt_tokens: data.usageMetadata.promptTokenCount || 0,
+                      completion_tokens:
+                        data.usageMetadata.candidatesTokenCount || 0,
+                    };
                   if (data.modelVersion) model = data.modelVersion;
                   if (data.candidates?.[0]?.finishReason) {
-                    finishReason = data.candidates[0].finishReason.toLowerCase();
+                    finishReason =
+                      data.candidates[0].finishReason.toLowerCase();
                   }
                 } else {
                   // OpenAI/DeepSeek format
@@ -488,7 +507,7 @@ export class APIClient {
           content: accumulatedContent,
           usage,
           model,
-          finish_reason: finishReason
+          finish_reason: finishReason,
         };
       } finally {
         reader.releaseLock();
@@ -499,23 +518,31 @@ export class APIClient {
   }
 
   private createAPIError(error: any): APIError {
-    const apiError = new Error(error.message || 'Unknown API error') as APIError;
-    
-    if (error.name === 'AbortError') {
-      apiError.type = 'timeout';
-      apiError.message = 'Request timeout';
-    } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-      apiError.type = 'network';
-    } else if (error.message?.includes('429') || error.message?.includes('rate limit')) {
-      apiError.type = 'rate_limit';
-    } else if (error.message?.includes('API request failed')) {
-      apiError.type = 'api';
+    const apiError = new Error(
+      error.message || "Unknown API error",
+    ) as APIError;
+
+    if (error.name === "AbortError") {
+      apiError.type = "timeout";
+      apiError.message = "Request timeout";
+    } else if (
+      error.message?.includes("Failed to fetch") ||
+      error.message?.includes("NetworkError")
+    ) {
+      apiError.type = "network";
+    } else if (
+      error.message?.includes("429") ||
+      error.message?.includes("rate limit")
+    ) {
+      apiError.type = "rate_limit";
+    } else if (error.message?.includes("API request failed")) {
+      apiError.type = "api";
       const statusMatch = error.message.match(/(\d{3})/);
       if (statusMatch) {
         apiError.status = parseInt(statusMatch[1]);
       }
     } else {
-      apiError.type = 'unknown';
+      apiError.type = "unknown";
     }
 
     return apiError;
@@ -523,17 +550,24 @@ export class APIClient {
 
   private shouldRetry(error: APIError): boolean {
     // Don't retry on authentication errors or client errors (4xx except 429)
-    if (error.status && error.status >= 400 && error.status < 500 && error.status !== 429) {
+    if (
+      error.status &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.status !== 429
+    ) {
       return false;
     }
 
     // Retry on network errors, timeouts, rate limits, and server errors
-    return ['network', 'timeout', 'rate_limit'].includes(error.type || 'unknown') || 
-           (error.status !== undefined && error.status >= 500);
+    return (
+      ["network", "timeout", "rate_limit"].includes(error.type || "unknown") ||
+      (error.status !== undefined && error.status >= 500)
+    );
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   updateConfig(newConfig: Partial<APIClientConfig>): void {
@@ -543,9 +577,12 @@ export class APIClient {
 
 // Provider detection utility
 export function detectProvider(apiUrl: string): APIProvider {
-  if (apiUrl.includes('deepseek')) {
+  if (apiUrl.includes("deepseek")) {
     return DEEPSEEK_PROVIDER;
-  } else if (apiUrl.includes('generativelanguage.googleapis.com') || apiUrl.includes('gemini')) {
+  } else if (
+    apiUrl.includes("generativelanguage.googleapis.com") ||
+    apiUrl.includes("gemini")
+  ) {
     return GEMINI_PROVIDER;
   }
   // Default to OpenAI for compatibility
@@ -553,18 +590,22 @@ export function detectProvider(apiUrl: string): APIProvider {
 }
 
 // Factory function for creating API client
-export function createAPIClient(apiKey: string, apiUrl: string, customConfig?: Partial<APIClientConfig>): APIClient {
+export function createAPIClient(
+  apiKey: string,
+  apiUrl: string,
+  customConfig?: Partial<APIClientConfig>,
+): APIClient {
   const provider = detectProvider(apiUrl);
-  
+
   // Update provider base URL if custom URL is provided
   const customProvider = {
     ...provider,
-    baseUrl: apiUrl.replace(/\/chat\/completions$/, '').replace(/\/$/, '')
+    baseUrl: apiUrl.replace(/\/chat\/completions$/, "").replace(/\/$/, ""),
   };
 
   return new APIClient({
     apiKey,
     provider: customProvider,
-    ...customConfig
+    ...customConfig,
   });
-} 
+}

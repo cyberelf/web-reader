@@ -24,38 +24,43 @@ This guide explains how to set up and use Google's Gemini models with the web-re
 ## Supported Features
 
 ### ✅ Text Generation
+
 - Full conversational AI capabilities
 - System instructions support
 - Streaming responses
 
 ### ✅ Vision Analysis
+
 - Image understanding and analysis
 - Multi-modal conversations
 - Screenshot analysis
 
 ### ✅ Rate Limiting
+
 - Automatic rate limit management
 - Free tier: 15 requests/minute, 50K tokens/day
 - Paid tier: 360 requests/minute, 4M tokens/day
 
 ## Model Comparison
 
-| Model | Speed | Capability | Cost | Best For |
-|-------|-------|------------|------|----------|
-| gemini-1.5-pro | Slower | Highest | Higher | Complex reasoning, analysis |
-| gemini-1.5-flash | Fast | High | Medium | General use, quick responses |
-| gemini-1.5-flash-8b | Fastest | Good | Lowest | Simple tasks, high volume |
+| Model               | Speed   | Capability | Cost   | Best For                     |
+| ------------------- | ------- | ---------- | ------ | ---------------------------- |
+| gemini-1.5-pro      | Slower  | Highest    | Higher | Complex reasoning, analysis  |
+| gemini-1.5-flash    | Fast    | High       | Medium | General use, quick responses |
+| gemini-1.5-flash-8b | Fastest | Good       | Lowest | Simple tasks, high volume    |
 
 ## API Differences
 
 The extension automatically handles the differences between OpenAI and Gemini APIs:
 
 ### Request Format Conversion
+
 - **System messages**: Converted to user messages with "System instruction:" prefix
 - **Assistant role**: Mapped to "model" role in Gemini
 - **Images**: Converted from URLs to inline base64 data
 
 ### Response Format
+
 - **Content**: Extracted from `candidates[0].content.parts[0].text`
 - **Usage stats**: Mapped from `usageMetadata` to standard format
 - **Streaming**: Handles Gemini's SSE format
@@ -63,12 +68,14 @@ The extension automatically handles the differences between OpenAI and Gemini AP
 ## Rate Limits
 
 ### Free Tier
+
 - 15 requests per minute
 - 1,500 requests per day
 - 32,000 tokens per minute
 - 50,000 tokens per day
 
 ### Paid Tier
+
 - 360 requests per minute
 - 50,000 requests per day
 - 4,000,000 tokens per minute
@@ -77,6 +84,7 @@ The extension automatically handles the differences between OpenAI and Gemini AP
 ## Example Usage
 
 ### Basic Text Generation
+
 ```javascript
 // The extension handles this automatically when you:
 // 1. Set API URL to Google's endpoint
@@ -100,7 +108,7 @@ The extension automatically handles the differences between OpenAI and Gemini AP
       "parts": [{"text": "System instruction: You are a helpful assistant"}]
     },
     {
-      "role": "user", 
+      "role": "user",
       "parts": [{"text": "Explain quantum computing"}]
     }
   ],
@@ -112,6 +120,7 @@ The extension automatically handles the differences between OpenAI and Gemini AP
 ```
 
 ### Image Analysis
+
 ```javascript
 // When you upload an image or take a screenshot:
 {
@@ -171,12 +180,14 @@ The extension automatically handles the differences between OpenAI and Gemini AP
 ## Cost Optimization
 
 ### Tips for Reducing Costs
+
 1. Use `gemini-1.5-flash-8b` for simple tasks
 2. Keep conversations concise
 3. Use appropriate `max_tokens` settings
 4. Monitor your usage in Google AI Studio
 
 ### Free Tier Optimization
+
 - Limit requests to stay within daily quotas
 - Use the extension's built-in rate limiting
 - Consider caching responses for repeated queries
@@ -186,4 +197,4 @@ The extension automatically handles the differences between OpenAI and Gemini AP
 - API keys are stored locally in the browser extension
 - No data is sent to third parties
 - All communication is directly with Google's API
-- Consider using environment-specific API keys for development vs production 
+- Consider using environment-specific API keys for development vs production
