@@ -446,12 +446,12 @@ async function fetchYouTubeSubtitles(): Promise<void> {
       });
 
       // Start observing network requests
-      observer.observe({ entryTypes: ["resource"] });
+      observer.observe({ entryTypes: ["resource"], buffered: true });
 
       // Clean up observer after timeout
       setTimeout(() => {
         observer.disconnect();
-      }, 5000);
+      }, 10000);
     });
 
     // Enable subtitles if they're not already enabled
@@ -478,9 +478,9 @@ async function fetchYouTubeSubtitles(): Promise<void> {
     console.log("Waiting for subtitle request...");
     const timeoutPromise = new Promise<string>((_, reject) => {
       setTimeout(() => {
-        console.error("Subtitle request timed out after 5 seconds");
+        console.error("Subtitle request timed out after 10 seconds");
         reject(new Error("Subtitle request timeout"));
-      }, 5000);
+      }, 10000);
     });
 
     // Wait for either the subtitle request or timeout
