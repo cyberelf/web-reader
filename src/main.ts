@@ -118,6 +118,12 @@ async function reinitializeForNewPage() {
 async function initializeExtension() {
   try {
     console.log("Initializing Web Reader Extension...");
+    // Only initialize if we're on normal page
+    const rootElement = document.querySelector("html") as HTMLElement;
+    if (!rootElement) {
+      console.log("Skipping non-html page");
+      return;
+    }
 
     // Check if button already exists
     let toggleButton = document.getElementById(
@@ -126,25 +132,41 @@ async function initializeExtension() {
 
     // Create toggle button if it doesn't exist
     if (!toggleButton) {
-      toggleButton = document.createElement("button");
-      toggleButton.id = "ai-page-reader-toggle";
-      toggleButton.textContent = "Ask AI";
-      toggleButton.style.visibility = "hidden"; // Hide initially
-      document.body.appendChild(toggleButton);
-      console.log("Created toggle button");
+      try {
+        toggleButton = document.createElement("button");
+        toggleButton.id = "ai-page-reader-toggle";
+        toggleButton.textContent = "Ask AI";
+        toggleButton.style.visibility = "hidden"; // Hide initially
+        document.body.appendChild(toggleButton);
+        console.log("Created toggle button");
+      } catch (error) {
+        console.error("Error creating toggle button:", error);
+        return; // Exit early if we can't create the button
+      }
     }
 
     // Initialize icon visibility using settings format
     chrome.storage.sync.get(["settings"], (result) => {
-      if (toggleButton) {
-        const settings = result.settings || {};
-        toggleButton.style.display =
-          settings.showIcon !== false ? "block" : "none";
-        toggleButton.style.visibility = "visible"; // Show after display is set
-        console.log(
-          "Toggle button visibility set:",
-          settings.showIcon !== false,
-        );
+      try {
+        // Re-get the toggle button to ensure it still exists
+        const currentToggleButton = document.getElementById(
+          "ai-page-reader-toggle",
+        ) as HTMLButtonElement | null;
+        
+        if (currentToggleButton && currentToggleButton.style) {
+          const settings = result.settings || {};
+          currentToggleButton.style.display =
+            settings.showIcon !== false ? "block" : "none";
+          currentToggleButton.style.visibility = "visible"; // Show after display is set
+          console.log(
+            "Toggle button visibility set:",
+            settings.showIcon !== false,
+          );
+        } else {
+          console.warn("Toggle button not found or missing style property");
+        }
+      } catch (error) {
+        console.error("Error setting toggle button visibility:", error);
       }
     });
 
