@@ -855,7 +855,7 @@ function layoutMindmapNodes(nodes: Node[], edges: Edge[]): Node[] {
 // Render flowchart as SVG
 function renderFlowchartSVG(data: DiagramData): string {
   if (data.nodes.length === 0) {
-    return '<svg viewBox="0 0 300 100" class="chart-svg"><text x="150" y="50" text-anchor="middle" class="chart-text">Empty flowchart</text></svg>';
+    return '<svg viewBox="0 0 300 100" class="wr-chart-svg"><text x="150" y="50" text-anchor="middle" class="wr-chart-text">Empty flowchart</text></svg>';
   }
 
   const positionedNodes = layoutFlowchartNodes(data.nodes, data.edges);
@@ -877,7 +877,7 @@ function renderFlowchartSVG(data: DiagramData): string {
   const width = maxX - minX;
   const height = maxY - minY;
 
-  let svg = `<svg viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" class="chart-svg">`;
+  let svg = `<svg viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" class="wr-chart-svg">`;
 
   // Add styles
   svg += `<defs>
@@ -936,14 +936,14 @@ function renderFlowchartSVG(data: DiagramData): string {
         const toX = toNode.x - unitX * (nodeWidth / 2);
         const toY = toNode.y - unitY * (nodeHeight / 2);
 
-        svg += `<line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" class="chart-edge" />`;
+        svg += `<line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" class="wr-chart-edge" />`;
 
         if (edge.text) {
           const midX = (fromX + toX) / 2;
           const midY = (fromY + toY) / 2;
           const textBg = edge.text.length * 6 + 8;
           svg += `<rect x="${midX - textBg / 2}" y="${midY - 10}" width="${textBg}" height="20" fill="white" stroke="none" rx="4" />`;
-          svg += `<text x="${midX}" y="${midY}" class="chart-edge-text">${edge.text}</text>`;
+          svg += `<text x="${midX}" y="${midY}" class="wr-chart-edge-text">${edge.text}</text>`;
         }
       }
     }
@@ -960,13 +960,13 @@ function renderFlowchartSVG(data: DiagramData): string {
     const actualHeight = nodeDimensions.height;
 
     if (node.shape === "circle") {
-      svg += `<circle cx="${x}" cy="${y}" r="30" class="chart-node" />`;
+      svg += `<circle cx="${x}" cy="${y}" r="30" class="wr-chart-node" />`;
     } else if (node.shape === "diamond") {
-      svg += `<polygon points="${x},${y - 25} ${x + 35},${y} ${x},${y + 25} ${x - 35},${y}" class="chart-node" />`;
+      svg += `<polygon points="${x},${y - 25} ${x + 35},${y} ${x},${y + 25} ${x - 35},${y}" class="wr-chart-node" />`;
     } else {
       // Rectangle (default) - use calculated dimensions
       const rx = node.shape === "rounded" ? "8" : "4";
-      svg += `<rect x="${x - actualWidth / 2}" y="${y - actualHeight / 2}" width="${actualWidth}" height="${actualHeight}" rx="${rx}" class="chart-node" />`;
+      svg += `<rect x="${x - actualWidth / 2}" y="${y - actualHeight / 2}" width="${actualWidth}" height="${actualHeight}" rx="${rx}" class="wr-chart-node" />`;
     }
 
     // Enhanced text wrapping with better support for Chinese characters
@@ -1054,12 +1054,12 @@ function renderFlowchartSVG(data: DiagramData): string {
 
     // Render text lines
     if (displayLines.length === 1) {
-      svg += `<text x="${x}" y="${y}" class="chart-node-text">${displayLines[0]}</text>`;
+      svg += `<text x="${x}" y="${y}" class="wr-chart-node-text">${displayLines[0]}</text>`;
     } else {
       const startY = y - ((displayLines.length - 1) * lineHeight) / 2;
       displayLines.forEach((line, index) => {
         const lineY = startY + index * lineHeight;
-        svg += `<text x="${x}" y="${lineY}" class="chart-node-text">${line}</text>`;
+        svg += `<text x="${x}" y="${lineY}" class="wr-chart-node-text">${line}</text>`;
       });
     }
   });
@@ -1071,7 +1071,7 @@ function renderFlowchartSVG(data: DiagramData): string {
 // Render mindmap as SVG
 function renderMindmapSVG(data: DiagramData): string {
   if (data.nodes.length === 0) {
-    return '<svg viewBox="0 0 300 100" class="chart-svg"><text x="150" y="50" text-anchor="middle" class="chart-text">Empty mindmap</text></svg>';
+    return '<svg viewBox="0 0 300 100" class="wr-chart-svg"><text x="150" y="50" text-anchor="middle" class="wr-chart-text">Empty mindmap</text></svg>';
   }
 
   const positionedNodes = layoutMindmapNodes(data.nodes, data.edges);
@@ -1086,7 +1086,7 @@ function renderMindmapSVG(data: DiagramData): string {
   const width = maxX - minX;
   const height = maxY - minY;
 
-  let svg = `<svg viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" class="chart-svg">`;
+  let svg = `<svg viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}" class="wr-chart-svg">`;
 
   // Add mindmap-specific styles
   svg += `<defs>
@@ -1203,7 +1203,7 @@ function renderMindmapSVG(data: DiagramData): string {
         toX + (fromX < toX ? -controlPointOffset : controlPointOffset);
       const cp2Y = toY;
 
-      svg += `<path d="M ${fromX} ${fromY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${toX} ${toY}" class="mindmap-connection" />`;
+      svg += `<path d="M ${fromX} ${fromY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${toX} ${toY}" class="wr-mindmap-connection" />`;
     }
   });
 
@@ -1307,12 +1307,12 @@ function renderMindmapSVG(data: DiagramData): string {
 
     // Render text lines
     if (displayLines.length === 1) {
-      svg += `<text x="${x}" y="${y}" class="mindmap-text">${displayLines[0]}</text>`;
+      svg += `<text x="${x}" y="${y}" class="wr-mindmap-text">${displayLines[0]}</text>`;
     } else {
       const startY = y - ((displayLines.length - 1) * lineHeight) / 2;
       displayLines.forEach((line, index) => {
         const lineY = startY + index * lineHeight;
-        svg += `<text x="${x}" y="${lineY}" class="mindmap-text">${line}</text>`;
+        svg += `<text x="${x}" y="${lineY}" class="wr-mindmap-text">${line}</text>`;
       });
     }
   });
@@ -1336,7 +1336,7 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
   });
 
   if (pieData.length === 0) {
-    return '<svg viewBox="0 0 300 100" class="chart-svg"><text x="150" y="50" text-anchor="middle" class="chart-text">No pie data</text></svg>';
+    return '<svg viewBox="0 0 300 100" class="wr-chart-svg"><text x="150" y="50" text-anchor="middle" class="wr-chart-text">No pie data</text></svg>';
   }
 
   const total = pieData.reduce((sum, item) => sum + item.value, 0);
@@ -1352,7 +1352,7 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
   ];
 
   let svg =
-    '<svg viewBox="0 0 500 350" width="500" height="350" class="chart-svg">';
+    '<svg viewBox="0 0 500 350" width="500" height="350" class="wr-chart-svg">';
   svg += `<defs>
     <style>
       .pie-text { 
@@ -1399,7 +1399,7 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
     ].join(" ");
 
     const color = colors[index % colors.length];
-    svg += `<path d="${pathData}" fill="${color}" class="pie-slice" />`;
+    svg += `<path d="${pathData}" fill="${color}" class="wr-pie-slice" />`;
 
     startAngle = endAngle;
   });
@@ -1411,8 +1411,8 @@ function renderPieChartSVG(data: DiagramData, code: string): string {
     const percentage = ((item.value / total) * 100).toFixed(1);
 
     svg += `<rect x="320" y="${legendY - 10}" width="16" height="16" rx="2" fill="${color}" />`;
-    svg += `<text x="345" y="${legendY}" class="pie-text">${item.label}</text>`;
-    svg += `<text x="345" y="${legendY + 15}" class="pie-text" style="font-size: 11px; opacity: 0.7;">${percentage}% (${item.value})</text>`;
+    svg += `<text x="345" y="${legendY}" class="wr-pie-text">${item.label}</text>`;
+    svg += `<text x="345" y="${legendY + 15}" class="wr-pie-text" style="font-size: 11px; opacity: 0.7;">${percentage}% (${item.value})</text>`;
     legendY += 45;
   });
 
@@ -1426,16 +1426,16 @@ function createChartContainer(
   diagramId: string,
   chartType: string,
 ): string {
-  return `<div class="chart-container" data-diagram-id="${diagramId}" data-fit-mode="fit">
-    <div class="chart-header">
-      <span class="chart-type-label">${chartType}</span>
-      <button class="chart-enlarge-toggle" title="Open chart in new tab" data-diagram-id="${diagramId}">
+  return `<div class="wr-chart-container" data-diagram-id="${diagramId}" data-fit-mode="fit">
+    <div class="wr-chart-header">
+      <span class="wr-chart-type-label">${chartType}</span>
+      <button class="wr-chart-enlarge-toggle" title="Open chart in new tab" data-diagram-id="${diagramId}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M7 17L17 7M17 7H7M17 7V17"/>
         </svg>
       </button>
     </div>
-    <div class="chart-content">${svg}</div>
+    <div class="wr-chart-content">${svg}</div>
   </div>`;
 }
 
@@ -1514,12 +1514,12 @@ function createChartFallback(
     ? `Chart rendering failed: ${errorMessage}`
     : "Chart type not supported";
 
-  return `<div class="chart-container chart-fallback" data-diagram-id="${diagramId}">
-    <div class="chart-fallback-header">
-      <span class="chart-diagram-type">📊 ${diagramName}</span>
-      <span class="chart-fallback-note">${fallbackNote}</span>
+  return `<div class="wr-chart-container wr-chart-fallback" data-diagram-id="${diagramId}">
+    <div class="wr-chart-fallback-header">
+      <span class="wr-chart-diagram-type">📊 ${diagramName}</span>
+      <span class="wr-chart-fallback-note">${fallbackNote}</span>
     </div>
-    <details class="chart-source">
+    <details class="wr-chart-source">
       <summary>View diagram source</summary>
       <pre><code class="language-mermaid">${code}</code></pre>
     </details>

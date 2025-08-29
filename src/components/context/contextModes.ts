@@ -71,13 +71,13 @@ function displayImage(src: string, container: HTMLElement | null): void {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="image-preview">
+    <div class="wr-image-preview">
       <img src="${src}" style="max-width: 100%; height: auto;">
-      <button class="clear-image" aria-label="Clear image">×</button>
+      <button class="wr-clear-image" aria-label="Clear image">×</button>
     </div>
   `;
 
-  const clearButton = container.querySelector(".clear-image");
+  const clearButton = container.querySelector(".wr-clear-image");
   if (clearButton) {
     clearButton.addEventListener("click", () => {
       if (container) {
@@ -326,19 +326,19 @@ function updateElementPreview(): void {
         : selectedElementText;
 
     contentPreviewElement.innerHTML = `
-      <div class="element-selection-preview">
-        <div class="element-info">
+      <div class="wr-element-selection-preview">
+        <div class="wr-element-info">
           <strong>${t("sidebar.preview.selectedElement")}:</strong> ${selectedElement?.tagName.toLowerCase() || "unknown"}
-          ${selectedElement?.className ? `<span class="element-class">.${selectedElement.className.split(" ")[0]}</span>` : ""}
+          ${selectedElement?.className ? `<span class="wr-element-class">.${selectedElement.className.split(" ")[0]}</span>` : ""}
         </div>
-        <div class="element-text">${preview}</div>
-        <button class="reselect-element-btn">${t("sidebar.preview.reselectElement")}</button>
+        <div class="wr-element-text">${preview}</div>
+        <button class="wr-reselect-element-btn">${t("sidebar.preview.reselectElement")}</button>
       </div>
     `;
 
     // Add event listener to reselect button
     const reselectBtn = contentPreviewElement.querySelector(
-      ".reselect-element-btn",
+      ".wr-reselect-element-btn",
     );
     reselectBtn?.addEventListener("click", () => {
       startElementSelection();
@@ -709,13 +709,13 @@ async function fetchBilibiliSubtitles(): Promise<void> {
           window.fetch = originalFetch; // Restore original fetch
 
           // Update UI to show we're processing
-          const videoPreview = document.querySelector(".video-loading");
+          const videoPreview = document.querySelector(".wr-video-loading");
           if (videoPreview) {
             videoPreview.innerHTML = `
-              <div class="video-loading">
+              <div class="wr-video-loading">
                 <p>Processing Bilibili subtitles...</p>
                 <small>Subtitle request detected</small>
-                <div class="loading-spinner"></div>
+                <div class="wr-loading-spinner"></div>
               </div>
             `;
           }
@@ -1026,11 +1026,11 @@ function setupEventListeners(contentPreview: HTMLElement): void {
 
 function createDownloadButton(preview: HTMLElement): HTMLButtonElement {
   let downloadButton = preview.querySelector(
-    ".download-subtitles",
+    ".wr-download-subtitles",
   ) as HTMLButtonElement;
   if (!downloadButton) {
     downloadButton = document.createElement("button");
-    downloadButton.className = "download-subtitles";
+    downloadButton.className = "wr-download-subtitles";
     downloadButton.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
       <polyline points="7 10 12 15 17 10"/>
@@ -1066,7 +1066,7 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
 
   if (!isVideoPage()) {
     preview.innerHTML = `
-      <div class="video-mode-message">
+      <div class="wr-video-mode-message">
         <p>${t("sidebar.preview.videoOnly")}</p>
         <small>Supports YouTube and Bilibili videos</small>
       </div>
@@ -1086,19 +1086,19 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
     if (isBilibiliPage()) {
       // For Bilibili, show clear manual instruction
       preview.innerHTML = `
-        <div class="video-loading">
+        <div class="wr-video-loading">
           <p>Ready to capture ${platform} subtitles</p>
           <small>👆 Click the subtitle button (CC/字幕) on the video player, then wait</small>
-          <div class="loading-spinner"></div>
+          <div class="wr-loading-spinner"></div>
         </div>
       `;
     } else {
       // For YouTube, show normal loading
       preview.innerHTML = `
-        <div class="video-loading">
+        <div class="wr-video-loading">
           <p>${t("sidebar.preview.loading")}</p>
           <small>Extracting ${platform} subtitles...</small>
-          <div class="loading-spinner"></div>
+          <div class="wr-loading-spinner"></div>
         </div>
       `;
     }
@@ -1131,11 +1131,11 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
     // Successfully loaded subtitles
     const platform = isYouTubePage() ? "YouTube" : "Bilibili";
     preview.innerHTML = `
-      <div class="subtitles-preview">
-        <div class="subtitle-header">
+      <div class="wr-subtitles-preview">
+        <div class="wr-subtitle-header">
           <small>${platform} Subtitles (${videoSubtitles.length} chars)</small>
         </div>
-        <div class="subtitle-content">${videoSubtitles.substring(0, 200)}${videoSubtitles.length > 200 ? "..." : ""}</div>
+        <div class="wr-subtitle-content">${videoSubtitles.substring(0, 200)}${videoSubtitles.length > 200 ? "..." : ""}</div>
       </div>
     `;
     preview.appendChild(downloadButton);
@@ -1145,10 +1145,10 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
   } else {
     // Failed to load or no subtitles
     const platform = isYouTubePage() ? "YouTube" : "Bilibili";
-    const refreshButton = `<button class="refresh-subtitles" onclick="this.parentElement.innerHTML='Loading...'; setTimeout(() => location.reload(), 500)">Refresh</button>`;
+    const refreshButton = `<button class="wr-refresh-subtitles" onclick="this.parentElement.innerHTML='Loading...'; setTimeout(() => location.reload(), 500)">Refresh</button>`;
 
     preview.innerHTML = `
-      <div class="video-error-message">
+      <div class="wr-video-error-message">
         <p>${videoSubtitles || t("sidebar.preview.noSubtitles")}</p>
         <small>For ${platform} videos, try:</small>
         <ul>
@@ -1214,14 +1214,14 @@ async function updateModeUI(
       updateElementPreview();
     } else {
       preview.innerHTML = `
-        <div class="element-selection-prompt">
+        <div class="wr-element-selection-prompt">
           <p>${t("sidebar.preview.selectElement")}</p>
-          <button class="start-element-selection-btn">${t("sidebar.preview.selectElement")}</button>
+          <button class="wr-start-element-selection-btn">${t("sidebar.preview.selectElement")}</button>
         </div>
       `;
 
       // Add event listener to start selection button
-      const startBtn = preview.querySelector(".start-element-selection-btn");
+      const startBtn = preview.querySelector(".wr-start-element-selection-btn");
       startBtn?.addEventListener("click", () => {
         startElementSelection();
       });

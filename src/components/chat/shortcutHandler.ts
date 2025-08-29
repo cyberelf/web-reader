@@ -130,7 +130,7 @@ export class ShortcutHandler {
   private showDropdown(): void {
     if (!this.dropdown) {
       this.dropdown = document.createElement("div");
-      this.dropdown.className = "shortcut-autocomplete";
+      this.dropdown.className = "wr-shortcut-autocomplete";
       // Find the input section to append the dropdown there
       const inputSection = this.input.closest(".ai-input-section");
       if (inputSection) {
@@ -143,15 +143,15 @@ export class ShortcutHandler {
     this.dropdown.innerHTML = this.matches
       .map(
         (match, index) => `
-        <div class="autocomplete-item ${index === this.selectedIndex ? "selected" : ""}" data-index="${index}">
-          <span class="command">${match.command}</span>
-          <span class="shortcut">${match.description}</span>
+        <div class="wr-autocomplete-item ${index === this.selectedIndex ? "selected" : ""}" data-index="${index}">
+          <span class="wr-command">${match.command}</span>
+          <span class="wr-shortcut">${match.description}</span>
         </div>
       `,
       )
       .join("");
 
-    this.dropdown.querySelectorAll(".autocomplete-item").forEach((item) => {
+    this.dropdown.querySelectorAll(".wr-autocomplete-item").forEach((item) => {
       item.addEventListener("click", () => {
         const index = parseInt(item.getAttribute("data-index") || "0");
         this.applyShortcut(this.matches[index].command);
@@ -172,7 +172,7 @@ export class ShortcutHandler {
     if (!this.dropdown) return;
 
     this.dropdown
-      .querySelectorAll(".autocomplete-item")
+      .querySelectorAll(".wr-autocomplete-item")
       .forEach((item, index) => {
         item.classList.toggle("selected", index === this.selectedIndex);
       });

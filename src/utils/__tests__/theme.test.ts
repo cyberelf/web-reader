@@ -7,8 +7,8 @@ describe("Theme Utility", () => {
     // Setup DOM elements
     container = document.createElement("div");
     container.innerHTML = `
-      <div id="ai-page-reader-sidebar" class="light"></div>
-      <button id="ai-theme-toggle" class="light"></button>
+      <div id="ai-page-reader-sidebar" class="wr-light"></div>
+      <button id="ai-theme-toggle" class="wr-light"></button>
     `;
     document.body.appendChild(container);
   });
@@ -24,10 +24,10 @@ describe("Theme Utility", () => {
       expect(
         document
           .getElementById("ai-page-reader-sidebar")
-          ?.classList.contains("light"),
+          ?.classList.contains("wr-light"),
       ).toBe(true);
       expect(
-        document.getElementById("ai-theme-toggle")?.classList.contains("light"),
+        document.getElementById("ai-theme-toggle")?.classList.contains("wr-light"),
       ).toBe(true);
       expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     });
@@ -38,10 +38,10 @@ describe("Theme Utility", () => {
       expect(
         document
           .getElementById("ai-page-reader-sidebar")
-          ?.classList.contains("dark"),
+          ?.classList.contains("wr-dark"),
       ).toBe(true);
       expect(
-        document.getElementById("ai-theme-toggle")?.classList.contains("dark"),
+        document.getElementById("ai-theme-toggle")?.classList.contains("wr-dark"),
       ).toBe(true);
       expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     });
@@ -51,16 +51,16 @@ describe("Theme Utility", () => {
       const toggle = document.getElementById("ai-theme-toggle");
 
       // Start with light theme
-      sidebar?.classList.add("light");
-      toggle?.classList.add("light");
+      sidebar?.classList.add("wr-light");
+      toggle?.classList.add("wr-light");
 
       // Switch to dark theme
       applyTheme("dark");
 
-      expect(sidebar?.classList.contains("light")).toBe(false);
-      expect(toggle?.classList.contains("light")).toBe(false);
-      expect(sidebar?.classList.contains("dark")).toBe(true);
-      expect(toggle?.classList.contains("dark")).toBe(true);
+      expect(sidebar?.classList.contains("wr-light")).toBe(false);
+      expect(toggle?.classList.contains("wr-light")).toBe(false);
+      expect(sidebar?.classList.contains("wr-dark")).toBe(true);
+      expect(toggle?.classList.contains("wr-dark")).toBe(true);
     });
 
     it("should handle missing elements gracefully", () => {

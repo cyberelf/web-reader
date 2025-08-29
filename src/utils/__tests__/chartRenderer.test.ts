@@ -498,13 +498,13 @@ Root
 
       const result = renderChart(code, "container-1");
 
-      expect(result).toContain('class="chart-container"');
+      expect(result).toContain('class="wr-chart-container"');
       expect(result).toContain('data-diagram-id="container-1"');
       expect(result).toContain('data-fit-mode="fit"');
-      expect(result).toContain('class="chart-header"');
-      expect(result).toContain('class="chart-type-label"');
-      expect(result).toContain('class="chart-enlarge-toggle"');
-      expect(result).toContain('class="chart-content"');
+      expect(result).toContain('class="wr-chart-header"');
+      expect(result).toContain('class="wr-chart-type-label"');
+      expect(result).toContain('class="wr-chart-enlarge-toggle"');
+      expect(result).toContain('class="wr-chart-content"');
     });
 
     it("should include correct chart type labels with simple styling", () => {
@@ -1478,7 +1478,7 @@ Root
 
         // Should have 4 path elements for 4 pie slices (excluding header icon)
         const pieSliceMatches = result.matchAll(
-          /<path[^>]*class="pie-slice"[^>]*>/g,
+          /<path[^>]*class="wr-pie-slice"[^>]*>/g,
         );
         const pieSlices = Array.from(pieSliceMatches);
         expect(pieSlices.length).toBe(4);
@@ -1545,7 +1545,7 @@ Root
 
         // Should have a properly sized viewBox for the main chart (not the header icon)
         const chartSvgMatch = result.match(
-          /viewBox="([^"]+)"[^>]*class="chart-svg"/,
+          /viewBox="([^"]+)"[^>]*class="wr-chart-svg"/,
         );
         expect(chartSvgMatch).toBeTruthy();
 
