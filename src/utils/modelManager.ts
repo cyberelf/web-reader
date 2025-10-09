@@ -642,7 +642,8 @@ export class ModelManager {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const message = await response.json();
+        throw new Error(`HTTP ${response.status}: ${message.error.message || response.statusText}`);
       }
 
       const data = await response.json();
@@ -660,8 +661,8 @@ export class ModelManager {
 
       return models;
     } catch (error) {
-      console.warn("Failed to fetch OpenAI models, using defaults:", error);
-      return DEFAULT_MODELS.openai.map((m) => ({ ...m, isManual: false }));
+      console.error("Failed to fetch OpenAI models:", error);
+      throw error;
     }
   }
 
@@ -669,14 +670,15 @@ export class ModelManager {
     provider: ProviderConfig,
   ): Promise<ModelInfo[]> {
     try {
-      const response = await fetch(`${provider.apiUrl}/models?pageSize=50`, {
+      const response = await fetch(`${provider.apiUrl}/models?pageSize=50&key=${provider.apiKey}`, {
         headers: {
           "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const message = await response.json();
+        throw new Error(`HTTP ${response.status}: ${message.error.message || response.statusText}`);
       }
 
       const data = await response.json();
@@ -702,12 +704,14 @@ export class ModelManager {
           contextLength: model.inputTokenLimit,
         }));
 
-      return models.length > 0
-        ? models
-        : DEFAULT_MODELS.gemini.map((m) => ({ ...m, isManual: false }));
+      if (models.length === 0) {
+        throw new Error("No compatible Gemini models found");
+      }
+
+      return models;
     } catch (error) {
-      console.warn("Failed to fetch Gemini models, using defaults:", error);
-      return DEFAULT_MODELS.gemini.map((m) => ({ ...m, isManual: false }));
+      console.error("Failed to fetch Gemini models:", error);
+      throw error;
     }
   }
 
@@ -736,8 +740,8 @@ export class ModelManager {
 
       return models;
     } catch (error) {
-      console.warn("Failed to fetch models from custom provider:", error);
-      return [];
+      console.error("Failed to fetch models from custom provider:", error);
+      throw error;
     }
   }
 
