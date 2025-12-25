@@ -1064,6 +1064,47 @@
   font-size: 12px;
 }
 
+/* Format Selector */
+.wr-subtitle-format-selector {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
+  background: var(--bg, #ffffff);
+  border-radius: 6px;
+  border: 1px solid var(--light-border);
+}
+
+.wr-format-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.wr-format-option:hover {
+  background: var(--hover, rgba(0, 0, 0, 0.05));
+}
+
+.wr-format-option input[type="radio"] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.wr-format-option input[type="radio"]:checked + span {
+  font-weight: 600;
+  color: var(--primary, #3b82f6);
+}
+
+.wr-format-option span {
+  user-select: none;
+}
+
 .wr-subtitle-content {
   color: var(--text);
   line-height: 1.4;

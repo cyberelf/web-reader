@@ -1,6 +1,7 @@
 /// <reference types="chrome"/>
 
 import { t } from "../../utils/i18n";
+import { cacheSubtitleURL, getCachedSubtitleURL } from "../../utils/storage";
 
 type ContextMode = "page" | "selection" | "screenshot" | "video" | "element";
 
@@ -26,6 +27,155 @@ try {
   );
 }
 let elementHighlight: HTMLElement | null = null;
+
+// Bilibili subtitle interception cleanup tracking
+let bilibiliCleanupFunctions: Array<() => void> = [];
+let activeBilibiliObserver: PerformanceObserver | null = null;
+let originalFetchBackup: typeof fetch | null = null;
+let originalXHROpenBackup: typeof XMLHttpRequest.prototype.open | null = null;
+let originalXHRSendBackup: typeof XMLHttpRequest.prototype.send | null = null;
+
+// Guard flag to prevent multiple simultaneous setups
+let isSettingUpContextModes = false;
+let setupRetryCount = 0;
+const MAX_SETUP_RETRIES = 5;
+
+// Cleanup function for Bilibili subtitle interception
+export function cleanupBilibiliInterception(): void {
+  console.log("🧹 Cleaning up Bilibili subtitle interception...");
+  
+  // Disconnect observer
+  if (activeBilibiliObserver) {
+    try {
+      activeBilibiliObserver.disconnect();
+      console.log("✅ PerformanceObserver disconnected");
+    } catch (error) {
+      console.warn("Failed to disconnect observer:", error);
+    }
+    activeBilibiliObserver = null;
+  }
+  
+  // Restore original fetch
+  if (originalFetchBackup) {
+    window.fetch = originalFetchBackup;
+    originalFetchBackup = null;
+    console.log("✅ Original fetch restored");
+  }
+  
+  // Restore original XHR
+  if (originalXHROpenBackup) {
+    XMLHttpRequest.prototype.open = originalXHROpenBackup;
+    originalXHROpenBackup = null;
+    console.log("✅ Original XHR.open restored");
+  }
+  
+  if (originalXHRSendBackup) {
+    XMLHttpRequest.prototype.send = originalXHRSendBackup;
+    originalXHRSendBackup = null;
+    console.log("✅ Original XHR.send restored");
+  }
+  
+  // Run any additional cleanup functions
+  bilibiliCleanupFunctions.forEach((cleanup) => {
+    try {
+      cleanup();
+    } catch (error) {
+      console.warn("Cleanup function error:", error);
+    }
+  });
+  bilibiliCleanupFunctions = [];
+  
+  console.log("✅ Bilibili interception cleanup complete");
+}
+
+// Subtitle format type
+type SubtitleFormat = "plain" | "markdown" | "srt";
+let subtitleFormat: SubtitleFormat = "markdown"; // Default to markdown
+
+// Store raw subtitle data for format conversion
+interface ParsedSubtitleSegment {
+  startTime: number; // in seconds
+  endTime: number; // in seconds
+  text: string;
+}
+let parsedSubtitleSegments: ParsedSubtitleSegment[] = [];
+
+// Helper function to convert seconds to [MM:SS] format
+function formatTimestamp(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `[${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}]`;
+}
+
+// Helper function to convert seconds to SRT timestamp format (HH:MM:SS,mmm)
+function formatSRTTimestamp(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")},${ms.toString().padStart(3, "0")}`;
+}
+
+// Helper function to detect paragraph breaks based on timing gaps
+function shouldBreakParagraph(
+  currentStartTime: number,
+  previousEndTime: number,
+  gapThreshold: number = 2,
+): boolean {
+  return currentStartTime - previousEndTime >= gapThreshold;
+}
+
+// Convert parsed segments to different formats
+function formatSubtitles(segments: ParsedSubtitleSegment[], format: SubtitleFormat): string {
+  if (segments.length === 0) return "No subtitles content found";
+
+  switch (format) {
+    case "plain":
+      // Plain text without timestamps, preserve paragraph breaks
+      let plainText = "";
+      for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        const prevSegment = i > 0 ? segments[i - 1] : null;
+        
+        if (prevSegment && shouldBreakParagraph(segment.startTime, prevSegment.endTime)) {
+          plainText += "\n\n";
+        } else if (i > 0) {
+          plainText += " ";
+        }
+        
+        plainText += segment.text;
+      }
+      return plainText;
+
+    case "markdown":
+      // Markdown format with [MM:SS] timestamps
+      let markdownText = "";
+      for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        const prevSegment = i > 0 ? segments[i - 1] : null;
+        
+        if (prevSegment && shouldBreakParagraph(segment.startTime, prevSegment.endTime)) {
+          markdownText += "\n\n";
+        } else if (i > 0) {
+          markdownText += " ";
+        }
+        
+        markdownText += `${formatTimestamp(segment.startTime)} ${segment.text}`;
+      }
+      return markdownText;
+
+    case "srt":
+      // SRT format with proper numbering and timestamps
+      return segments
+        .map((segment, index) => {
+          return `${index + 1}\n${formatSRTTimestamp(segment.startTime)} --> ${formatSRTTimestamp(segment.endTime)}\n${segment.text}\n`;
+        })
+        .join("\n");
+
+    default:
+      return formatSubtitles(segments, "markdown");
+  }
+}
 
 interface SubtitleSegment {
   utf8: string;
@@ -120,7 +270,15 @@ function isVideoPage(): boolean {
 }
 
 function downloadText(text: string, filename: string): void {
-  const blob = new Blob([text], { type: "text/plain" });
+  // Determine MIME type based on file extension
+  let mimeType = "text/plain";
+  if (filename.endsWith(".md")) {
+    mimeType = "text/markdown";
+  } else if (filename.endsWith(".srt")) {
+    mimeType = "application/x-subrip";
+  }
+  
+  const blob = new Blob([text], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -398,6 +556,55 @@ async function fetchYouTubeSubtitles(): Promise<void> {
 
   try {
     console.log("Starting YouTube subtitles fetch...");
+    
+    // Extract video ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get("v");
+    
+    if (!videoId) {
+      videoSubtitles = "Could not extract YouTube video ID";
+      return;
+    }
+    
+    // Check for cached subtitle URL
+    const cachedURL = await getCachedSubtitleURL("youtube", videoId);
+    if (cachedURL) {
+      console.log("🔄 Using cached subtitle URL...");
+      try {
+        const response = await fetch(cachedURL);
+        const text = await response.text();
+        const subtitlesJson = JSON.parse(text) as SubtitleResponse;
+        
+        // Parse subtitle events with timestamps
+        parsedSubtitleSegments = [];
+        
+        if (subtitlesJson.events) {
+          for (const event of subtitlesJson.events) {
+            if (event.segs && event.segs.length > 0) {
+              const textContent = event.segs
+                .map((seg: SubtitleSegment) => seg.utf8 || "")
+                .join("")
+                .trim();
+              
+              if (textContent.length > 0) {
+                parsedSubtitleSegments.push({
+                  startTime: event.tStartMs / 1000,
+                  endTime: (event.tStartMs + event.dDurationMs) / 1000,
+                  text: textContent,
+                });
+              }
+            }
+          }
+        }
+        
+        videoSubtitles = formatSubtitles(parsedSubtitleSegments, subtitleFormat);
+        console.log("✅ Loaded subtitles from cache");
+        return;
+      } catch (error) {
+        console.warn("Failed to load from cache, fetching fresh:", error);
+      }
+    }
+    
     // Get YouTube player and subtitle button
     const player = document.querySelector(".html5-video-player");
     const subtitleButton = document.querySelector(
@@ -429,6 +636,9 @@ async function fetchYouTubeSubtitles(): Promise<void> {
           if (url.includes("youtube.com/api/timedtext")) {
             console.log("Found subtitle request:", url);
             observer.disconnect();
+            
+            // Cache the subtitle URL
+            cacheSubtitleURL("youtube", videoId, url);
 
             // Fetch the subtitles
             fetch(url)
@@ -495,20 +705,36 @@ async function fetchYouTubeSubtitles(): Promise<void> {
       const subtitlesJson = JSON.parse(subtitlesText) as SubtitleResponse;
       console.log("Found events:", subtitlesJson.events?.length);
 
-      // Extract text from events
-      const subtitlesContent = subtitlesJson.events
-        ?.filter((event: SubtitleEvent) => event.segs && event.segs.length > 0)
-        ?.map((event: SubtitleEvent) =>
-          event.segs!.map((seg: SubtitleSegment) => seg.utf8 || "").join(""),
-        )
-        .filter(
-          (text: string | undefined): text is string =>
-            typeof text === "string" && text.length > 0,
-        )
-        .join(" ");
+      // Parse subtitle events with timestamps
+      parsedSubtitleSegments = [];
+      
+      if (subtitlesJson.events) {
+        for (const event of subtitlesJson.events) {
+          if (event.segs && event.segs.length > 0) {
+            const text = event.segs
+              .map((seg: SubtitleSegment) => seg.utf8 || "")
+              .join("")
+              .trim();
+            
+            if (text.length > 0) {
+              const startTime = event.tStartMs / 1000; // Convert ms to seconds
+              const endTime = (event.tStartMs + event.dDurationMs) / 1000;
+              
+              parsedSubtitleSegments.push({
+                startTime,
+                endTime,
+                text,
+              });
+            }
+          }
+        }
+      }
 
-      console.log("Final subtitles length:", subtitlesContent?.length);
-      videoSubtitles = subtitlesContent || "No subtitles content found";
+      console.log("Parsed subtitle segments:", parsedSubtitleSegments.length);
+      
+      // Format subtitles based on selected format
+      videoSubtitles = formatSubtitles(parsedSubtitleSegments, subtitleFormat);
+      console.log("Final subtitles length:", videoSubtitles.length);
     } catch (error) {
       console.error("Failed to parse subtitles JSON:", error);
       videoSubtitles = "Failed to parse subtitles";
@@ -524,6 +750,47 @@ async function fetchBilibiliSubtitles(): Promise<void> {
 
   try {
     console.log("Starting Bilibili subtitles fetch...");
+    
+    // Extract video ID from URL (BV or av format)
+    const urlMatch = window.location.pathname.match(/\/(BV\w+|av\d+)/);
+    const videoId = urlMatch ? urlMatch[1] : null;
+    
+    if (!videoId) {
+      console.warn("Could not extract Bilibili video ID");
+    }
+    
+    // Check for cached subtitle URL if we have a video ID
+    if (videoId) {
+      const cachedURL = await getCachedSubtitleURL("bilibili", videoId);
+      if (cachedURL) {
+        console.log("🔄 Using cached Bilibili subtitle URL...");
+        try {
+          const response = await fetch(cachedURL);
+          const text = await response.text();
+          const subtitlesJson = JSON.parse(text) as BilibiliSubtitleData;
+          
+          if (subtitlesJson.body && Array.isArray(subtitlesJson.body)) {
+            const sortedSubtitles = subtitlesJson.body.sort(
+              (a, b) => a.from - b.from,
+            );
+            
+            parsedSubtitleSegments = sortedSubtitles
+              .filter((item: BilibiliSubtitleItem) => item.content && item.content.trim().length > 0)
+              .map((item: BilibiliSubtitleItem) => ({
+                startTime: item.from,
+                endTime: item.to,
+                text: item.content.trim(),
+              }));
+            
+            videoSubtitles = formatSubtitles(parsedSubtitleSegments, subtitleFormat);
+            console.log("✅ Loaded Bilibili subtitles from cache");
+            return;
+          }
+        } catch (error) {
+          console.warn("Failed to load from cache, fetching fresh:", error);
+        }
+      }
+    }
 
     // Wait for page to be fully loaded
     await new Promise((resolve) => {
@@ -595,12 +862,12 @@ async function fetchBilibiliSubtitles(): Promise<void> {
       }
     }
 
-    // Set up request interception for manual subtitle activation
-    console.log("🎯 Ready to capture Bilibili subtitle requests...");
-    console.log(
-      "👆 Please manually click the subtitle button (CC/字幕) on the video player",
-    );
-
+    // Set up request interception BEFORE clicking the button
+    console.log("🎯 Setting up request interception...");
+    
+    // Clean up any previous interception first
+    cleanupBilibiliInterception();
+    
     // Create a promise to capture subtitle requests with multiple approaches
     const subtitleRequestPromise = new Promise<string>((resolve, reject) => {
       console.log("Setting up Bilibili subtitle observer...");
@@ -639,6 +906,12 @@ async function fetchBilibiliSubtitles(): Promise<void> {
             console.log("🎯 Subtitle request found:", url);
             requestCaptured = true;
             observer.disconnect();
+            activeBilibiliObserver = null;
+            
+            // Cache the subtitle URL if we have a video ID
+            if (videoId) {
+              cacheSubtitleURL("bilibili", videoId, url);
+            }
 
             fetch(url, {
               method: "GET",
@@ -688,8 +961,13 @@ async function fetchBilibiliSubtitles(): Promise<void> {
       });
 
       observer.observe({ entryTypes: ["resource"] });
+      activeBilibiliObserver = observer; // Track for cleanup
 
       // Method 2: Fetch override
+      // Backup original fetch if not already backed up
+      if (!originalFetchBackup) {
+        originalFetchBackup = window.fetch;
+      }
       const originalFetch = window.fetch;
       const fetchOverride = async (
         input: RequestInfo | URL,
@@ -707,6 +985,11 @@ async function fetchBilibiliSubtitles(): Promise<void> {
           requestCaptured = true;
           observer.disconnect();
           window.fetch = originalFetch; // Restore original fetch
+          
+          // Cache the subtitle URL if we have a video ID
+          if (videoId) {
+            cacheSubtitleURL("bilibili", videoId, url);
+          }
 
           // Update UI to show we're processing
           const videoPreview = document.querySelector(".wr-video-loading");
@@ -759,6 +1042,14 @@ async function fetchBilibiliSubtitles(): Promise<void> {
       window.fetch = fetchOverride;
 
       // Method 3: XMLHttpRequest interception
+      // Backup original XHR if not already backed up
+      if (!originalXHROpenBackup) {
+        originalXHROpenBackup = XMLHttpRequest.prototype.open;
+      }
+      if (!originalXHRSendBackup) {
+        originalXHRSendBackup = XMLHttpRequest.prototype.send;
+      }
+      
       const originalXHROpen = XMLHttpRequest.prototype.open;
       const originalXHRSend = XMLHttpRequest.prototype.send;
 
@@ -798,6 +1089,11 @@ async function fetchBilibiliSubtitles(): Promise<void> {
             requestCaptured = true;
             observer.disconnect();
             window.fetch = originalFetch;
+            
+            // Cache the subtitle URL if we have a video ID
+            if (videoId) {
+              cacheSubtitleURL("bilibili", videoId, this._interceptUrl!);
+            }
 
             this.addEventListener("load", () => {
               if (this.status === 200) {
@@ -833,12 +1129,250 @@ async function fetchBilibiliSubtitles(): Promise<void> {
         return originalXHRSend.call(this, body);
       };
 
+      // NOW that interception is set up, automatically detect and click subtitle button
+      (async () => {
+        // Small delay to ensure all interceptors are ready
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        
+        console.log("🔍 Checking for already-enabled subtitles...");
+        
+        // Check if subtitles are currently displayed on the page (updated based on DevTools MCP analysis)
+        const subtitleElements = [
+          ".bili-subtitle-x-subtitle-panel-text",  // Updated class name (confirmed)
+          ".bili-subtitle-x-subtitle-panel",       // Parent panel (confirmed)
+          ".bpx-player-subtitle-panel-text",
+          ".bilibili-player-video-subtitle",
+          ".bpx-player-subtitle-wrap",
+          ".subtitle-item-txt",
+        ];
+        
+        let subtitlesAlreadyEnabled = false;
+        for (const selector of subtitleElements) {
+          const element = document.querySelector(selector);
+          if (element) {
+            // Check if panel is visible
+            const display = window.getComputedStyle(element).display;
+            if (display !== "none") {
+              const hasContent = element.textContent && element.textContent.trim().length > 0;
+              if (hasContent || selector.includes("panel")) {
+                console.log("✅ Detected already-enabled subtitles via:", selector, "display:", display);
+                subtitlesAlreadyEnabled = true;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Find subtitle button with multiple selectors (updated based on DevTools MCP analysis)
+        const subtitleButtonSelectors = [
+          ".bpx-player-ctrl-subtitle",  // Main subtitle button class (confirmed)
+          ".bpx-player-ctrl-btn.bpx-player-ctrl-subtitle",
+          ".bpx-player-ctrl-btn-subtitle",
+          ".bilibili-player-video-btn-subtitle",
+          ".bpx-player-ctrl-btn[aria-label*='字幕']",
+          ".bpx-player-ctrl-btn[aria-label*='subtitle']",
+          "div[class*='subtitle'][class*='btn']",
+        ];
+        
+        let subtitleButton: HTMLElement | null = null;
+        for (const selector of subtitleButtonSelectors) {
+          subtitleButton = document.querySelector(selector) as HTMLElement;
+          if (subtitleButton) {
+            console.log("✅ Found subtitle button with selector:", selector);
+            break;
+          }
+        }
+        
+        if (!subtitleButton) {
+          console.warn("⚠️ Subtitle button not found, trying alternative detection...");
+          // Try to find any button with subtitle-related text
+          const allButtons = Array.from(document.querySelectorAll("button, div[role='button']"));
+          subtitleButton = allButtons.find((btn) => {
+            const text = btn.textContent?.toLowerCase() || "";
+            const ariaLabel = btn.getAttribute("aria-label")?.toLowerCase() || "";
+            return text.includes("字幕") || text.includes("subtitle") || 
+                   ariaLabel.includes("字幕") || ariaLabel.includes("subtitle");
+          }) as HTMLElement | undefined || null;
+          
+          if (subtitleButton) {
+            console.log("✅ Found subtitle button via text search");
+          }
+        }
+        
+        if (subtitleButton) {
+          const isActive = subtitleButton.classList.contains("active") || 
+                          subtitleButton.classList.contains("bpx-state-active") ||
+                          subtitleButton.getAttribute("data-state") === "active";
+          
+          if (isActive) {
+            console.log("✅ Subtitle button is already active");
+            subtitlesAlreadyEnabled = true;
+          }
+          
+          // Handle subtitle menu interaction (improved logic based on DevTools MCP analysis)
+          if (!subtitlesAlreadyEnabled) {
+            console.log("🤖 Opening subtitle menu...");
+            subtitleButton.click();
+            
+            // Wait for menu to appear
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            
+            // NEW: Try to enable subtitles by clicking the close/toggle switch
+            console.log("🔍 Looking for subtitle close/toggle switch...");
+            const closeSwitchSelectors = [
+              ".bpx-player-ctrl-subtitle-close-switch",  // Confirmed via DevTools MCP
+              ".bpx-player-ctrl-subtitle-open-switch",
+              "[data-action='close']",
+            ];
+            
+            let closeSwitch: HTMLElement | null = null;
+            for (const selector of closeSwitchSelectors) {
+              closeSwitch = document.querySelector(selector) as HTMLElement;
+              if (closeSwitch) {
+                console.log("✅ Found subtitle toggle switch with selector:", selector);
+                
+                // Check if switch indicates subtitles are off
+                const isOff = !closeSwitch.classList.contains("bpx-state-active");
+                if (isOff) {
+                  console.log("🤖 Clicking toggle switch to enable subtitles...");
+                  closeSwitch.click();
+                  await new Promise((resolve) => setTimeout(resolve, 300));
+                  console.log("✅ Toggle switch clicked, subtitles should be enabled");
+                  return; // Exit - subtitles should now be enabled
+                } else {
+                  console.log("ℹ️ Toggle switch indicates subtitles already enabled");
+                }
+                break;
+              }
+            }
+            
+            // FALLBACK: If no toggle switch found, try language selection menu
+            console.log("🔍 Looking for subtitle language options in menu...");
+            
+            // Try multiple selectors for subtitle menu items (updated based on DevTools MCP)
+            const menuItemSelectors = [
+              ".bpx-player-ctrl-subtitle-language-item",  // Correct class name (confirmed via DevTools MCP)
+              ".bpx-player-ctrl-subtitle-lan-item",
+              ".bpx-player-ctrl-subtitle-box .bpx-player-ctrl-subtitle-btn",
+              ".bpx-player-ctrl-subtitle-box li",
+              ".bpx-player-ctrl-subtitle-list li",
+              ".bilibili-player-video-btn-subtitle-panel li",
+              "div[class*='subtitle'][class*='panel'] li",
+              "div[class*='subtitle'][class*='menu'] div[role='menuitem']",
+            ];
+            
+            let menuItems: HTMLElement[] = [];
+            for (const selector of menuItemSelectors) {
+              const items = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+              if (items.length > 0) {
+                console.log(`✅ Found ${items.length} menu items with selector: ${selector}`);
+                menuItems = items;
+                break;
+              }
+            }
+            
+            // If no items found with selectors, try finding by text content
+            if (menuItems.length === 0) {
+              const allElements = Array.from(document.querySelectorAll("li, div[role='menuitem'], button, div[class*='subtitle']"));
+              menuItems = allElements.filter((el) => {
+                const text = el.textContent?.trim() || "";
+                // Look for language options but exclude "关闭" (Off) and "字幕设置" (Settings)
+                return (text.match(/^(中文|英文|English|日本語|한국어|繁體中文|简体中文|AI|字幕)$/)) && 
+                       !text.includes("关闭") && 
+                       !text.includes("设置");
+              }) as HTMLElement[];
+              
+              if (menuItems.length > 0) {
+                console.log(`✅ Found ${menuItems.length} subtitle language options via text search`);
+              }
+            }
+            
+            // Click on the first available subtitle option (not "关闭")
+            let clicked = false;
+            for (const item of menuItems) {
+              const itemText = item.textContent?.trim() || "";
+              
+              // Skip "关闭" (Off), "字幕设置" (Settings), and empty items
+              if (itemText && 
+                  !itemText.includes("关闭") && 
+                  !itemText.includes("设置") &&
+                  !itemText.includes("Off") &&
+                  !itemText.includes("Settings")) {
+                console.log(`🤖 Clicking subtitle option: "${itemText}"`);
+                item.click();
+                clicked = true;
+                console.log("✅ Subtitle language selected, waiting for request...");
+                break;
+              }
+            }
+            
+            if (!clicked) {
+              console.warn("⚠️ Could not find subtitle language option to click");
+              console.log("👆 Please manually select a subtitle language from the menu");
+            }
+          } else {
+            // If already enabled, use the close/toggle switch to refresh
+            console.log("🔄 Subtitles already enabled, refreshing via toggle switch...");
+            subtitleButton.click();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            
+            // Try to find and click the close switch (updated selector)
+            const closeSwitch = document.querySelector(".bpx-player-ctrl-subtitle-close-switch") as HTMLElement;
+            
+            if (closeSwitch) {
+              console.log("🔄 Toggling subtitles off...");
+              closeSwitch.click();
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              
+              console.log("🔄 Toggling subtitles back on...");
+              closeSwitch.click();
+              await new Promise((resolve) => setTimeout(resolve, 300));
+              console.log("✅ Subtitles toggled, waiting for request...");
+            } else {
+              // FALLBACK: Use old method with language menu
+              console.log("🔄 Using fallback toggle method...");
+              
+              // Click "关闭" (Off) if available
+              const offOption = Array.from(document.querySelectorAll("li, div[role='menuitem']")).find((el) => {
+                const text = el.textContent?.trim() || "";
+                return text.includes("关闭") || text.toLowerCase().includes("off");
+              }) as HTMLElement | undefined;
+              
+              if (offOption) {
+                console.log("🔄 Turning off subtitles...");
+                offOption.click();
+                await new Promise((resolve) => setTimeout(resolve, 500));
+              }
+              
+              // Click button again to open menu
+              subtitleButton.click();
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              
+              // Click on a subtitle language option
+              const menuItems = Array.from(document.querySelectorAll("li, div[role='menuitem']"));
+              const langOption = menuItems.find((el) => {
+                const text = el.textContent?.trim() || "";
+                return text && !text.includes("关闭") && !text.includes("设置") && 
+                       (text.includes("中文") || text.includes("English") || text.match(/^[A-Za-z\u4e00-\u9fa5]{2,6}$/));
+              }) as HTMLElement | undefined;
+              
+              if (langOption) {
+                console.log(`🔄 Re-enabling subtitles: "${langOption.textContent?.trim()}"`);
+                langOption.click();
+                console.log("✅ Subtitle language selected, waiting for request...");
+              }
+            }
+          }
+        } else {
+          console.warn("⚠️ Could not find subtitle button - waiting for manual clicking");
+          console.log("👆 Please manually click the subtitle button (CC/字幕) on the video player");
+        }
+      })();
+
       // Extended timeout for manual clicking - giving users 30 seconds
       setTimeout(() => {
-        observer.disconnect();
-        window.fetch = originalFetch; // Restore original fetch
-        XMLHttpRequest.prototype.open = originalXHROpen; // Restore original XHR
-        XMLHttpRequest.prototype.send = originalXHRSend;
+        console.log("⏱️ Subtitle capture timeout reached");
+        cleanupBilibiliInterception(); // Use centralized cleanup
         if (!requestCaptured) {
           reject(
             new Error(
@@ -853,6 +1387,9 @@ async function fetchBilibiliSubtitles(): Promise<void> {
     try {
       const subtitlesText = await subtitleRequestPromise;
       console.log("Parsing Bilibili subtitle JSON...");
+      
+      // Clean up interception after successful capture
+      cleanupBilibiliInterception();
 
       const subtitlesJson = JSON.parse(subtitlesText) as BilibiliSubtitleData;
 
@@ -862,24 +1399,25 @@ async function fetchBilibiliSubtitles(): Promise<void> {
           (a, b) => a.from - b.from,
         );
 
-        const subtitlesContent = sortedSubtitles
-          .map((item: BilibiliSubtitleItem) => item.content)
-          .filter((content: string) => content && content.trim().length > 0)
-          .join(" ");
+        // Parse subtitle items with timestamps
+        parsedSubtitleSegments = sortedSubtitles
+          .filter((item: BilibiliSubtitleItem) => item.content && item.content.trim().length > 0)
+          .map((item: BilibiliSubtitleItem) => ({
+            startTime: item.from,
+            endTime: item.to,
+            text: item.content.trim(),
+          }));
 
-        console.log(
-          "Final Bilibili subtitles length:",
-          subtitlesContent.length,
-        );
+        console.log("Parsed Bilibili subtitle segments:", parsedSubtitleSegments.length);
         console.log("Subtitle language:", subtitlesJson.lang);
         console.log("Subtitle type:", subtitlesJson.type);
 
-        if (subtitlesContent && subtitlesContent.length > 0) {
-          videoSubtitles = subtitlesContent;
-          console.log(
-            "✅ Bilibili subtitles successfully loaded, length:",
-            subtitlesContent.length,
-          );
+        // Format subtitles based on selected format
+        videoSubtitles = formatSubtitles(parsedSubtitleSegments, subtitleFormat);
+        console.log("Final Bilibili subtitles length:", videoSubtitles.length);
+
+        if (videoSubtitles && videoSubtitles.length > 0) {
+          console.log("✅ Bilibili subtitles successfully loaded");
 
           // Refresh the UI immediately when subtitles are captured
           const preview = document.getElementById("ai-content-preview");
@@ -1037,27 +1575,43 @@ function createDownloadButton(preview: HTMLElement): HTMLButtonElement {
       <line x1="12" y1="15" x2="12" y2="3"/>
     </svg>`;
     downloadButton.title = "Download Subtitles";
-
-    downloadButton.addEventListener("click", () => {
-      if (videoSubtitles && videoSubtitles !== "No subtitles content found") {
-        let videoTitle = "video_subtitles";
-
-        if (isYouTubePage()) {
-          videoTitle =
-            document
-              .querySelector("h1.ytd-video-primary-info-renderer")
-              ?.textContent?.trim() || "youtube_subtitles";
-        } else if (isBilibiliPage()) {
-          videoTitle =
-            document
-              .querySelector(".video-title, h1[title]")
-              ?.textContent?.trim() || "bilibili_subtitles";
-        }
-
-        downloadText(videoSubtitles, `${videoTitle}.txt`);
-      }
-    });
   }
+  
+  // Remove existing click listeners by cloning the button
+  const newButton = downloadButton.cloneNode(true) as HTMLButtonElement;
+  downloadButton.parentNode?.replaceChild(newButton, downloadButton);
+  downloadButton = newButton;
+  
+  // Add fresh event listener that reads current format
+  downloadButton.addEventListener("click", () => {
+    if (videoSubtitles && videoSubtitles !== "No subtitles content found") {
+      let videoTitle = "video_subtitles";
+
+      if (isYouTubePage()) {
+        videoTitle =
+          document
+            .querySelector("h1.ytd-video-primary-info-renderer")
+            ?.textContent?.trim() || "youtube_subtitles";
+      } else if (isBilibiliPage()) {
+        videoTitle =
+          document
+            .querySelector(".video-title, h1[title]")
+            ?.textContent?.trim() || "bilibili_subtitles";
+      }
+
+      // Determine file extension based on current format
+      let extension = ".txt";
+      if (subtitleFormat === "markdown") {
+        extension = ".md";
+      } else if (subtitleFormat === "srt") {
+        extension = ".srt";
+      }
+
+      console.log("📥 Downloading subtitles in", subtitleFormat, "format as", `${videoTitle}${extension}`);
+      downloadText(videoSubtitles, `${videoTitle}${extension}`);
+    }
+  });
+  
   return downloadButton;
 }
 
@@ -1084,11 +1638,11 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
         : "Video";
 
     if (isBilibiliPage()) {
-      // For Bilibili, show clear manual instruction
+      // For Bilibili, show automatic extraction message
       preview.innerHTML = `
         <div class="wr-video-loading">
-          <p>Ready to capture ${platform} subtitles</p>
-          <small>👆 Click the subtitle button (CC/字幕) on the video player, then wait</small>
+          <p>Extracting ${platform} subtitles...</p>
+          <small>🤖 Automatically detecting and capturing subtitles</small>
           <div class="wr-loading-spinner"></div>
         </div>
       `;
@@ -1135,9 +1689,44 @@ async function updateVideoUI(preview: HTMLElement): Promise<void> {
         <div class="wr-subtitle-header">
           <small>${platform} Subtitles (${videoSubtitles.length} chars)</small>
         </div>
+        <div class="wr-subtitle-format-selector">
+          <label class="wr-format-option">
+            <input type="radio" name="subtitle-format" value="markdown" ${subtitleFormat === "markdown" ? "checked" : ""}>
+            <span>Markdown</span>
+          </label>
+          <label class="wr-format-option">
+            <input type="radio" name="subtitle-format" value="plain" ${subtitleFormat === "plain" ? "checked" : ""}>
+            <span>Plain Text</span>
+          </label>
+          <label class="wr-format-option">
+            <input type="radio" name="subtitle-format" value="srt" ${subtitleFormat === "srt" ? "checked" : ""}>
+            <span>SRT</span>
+          </label>
+        </div>
         <div class="wr-subtitle-content">${videoSubtitles.substring(0, 200)}${videoSubtitles.length > 200 ? "..." : ""}</div>
       </div>
     `;
+    
+    // Add format selector event listeners
+    const formatRadios = preview.querySelectorAll('input[name="subtitle-format"]');
+    formatRadios.forEach((radio) => {
+      radio.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        subtitleFormat = target.value as SubtitleFormat;
+        
+        // Regenerate subtitles with new format
+        videoSubtitles = formatSubtitles(parsedSubtitleSegments, subtitleFormat);
+        
+        // Update preview
+        const contentDiv = preview.querySelector(".wr-subtitle-content");
+        if (contentDiv) {
+          contentDiv.textContent = videoSubtitles.substring(0, 200) + (videoSubtitles.length > 200 ? "..." : "");
+        }
+        
+        console.log("📝 Subtitle format changed to:", subtitleFormat);
+      });
+    });
+    
     preview.appendChild(downloadButton);
     downloadButton.style.display = "flex";
 
@@ -1169,6 +1758,11 @@ async function updateModeUI(
   dropZone: HTMLElement,
   preview: HTMLElement,
 ): Promise<void> {
+  // Clean up Bilibili interception when switching away from video mode
+  if (currentMode === "video" && mode !== "video") {
+    cleanupBilibiliInterception();
+  }
+  
   screenshotBtn.classList.toggle("hidden", mode !== "screenshot");
   dropZone.classList.toggle("hidden", mode !== "screenshot");
 
@@ -1236,6 +1830,14 @@ async function updateModeUI(
 }
 
 export function setupContextModes(): void {
+  // Prevent multiple simultaneous setups
+  if (isSettingUpContextModes) {
+    console.log("Context modes setup already in progress, skipping...");
+    return;
+  }
+  
+  isSettingUpContextModes = true;
+  
   const sliderContainer = document.querySelector(".ai-slider-container");
   const sliderHighlight = document.querySelector(".ai-slider-highlight");
   const dropZone = document.getElementById("ai-drop-zone");
@@ -1255,10 +1857,24 @@ export function setupContextModes(): void {
     !screenshotBtn ||
     !fileInput
   ) {
-    console.error("Required elements not found, retrying in 100ms");
-    setupContextModes(); // Retry setup
+    isSettingUpContextModes = false;
+    setupRetryCount++;
+    
+    if (setupRetryCount >= MAX_SETUP_RETRIES) {
+      console.error(`Failed to find required elements after ${MAX_SETUP_RETRIES} attempts. Giving up.`);
+      setupRetryCount = 0;
+      return;
+    }
+    
+    console.log(`Required elements not found, retrying in 500ms (attempt ${setupRetryCount}/${MAX_SETUP_RETRIES})...`);
+    setTimeout(() => {
+      setupContextModes();
+    }, 500);
     return;
   }
+  
+  // Reset retry count on successful setup
+  setupRetryCount = 0;
 
   // Set up event listeners
   setupEventListeners(contentPreview);
@@ -1308,6 +1924,7 @@ export function setupContextModes(): void {
 
   // Initialize with page content
   updateModeUI("page", screenshotBtn, dropZone, contentPreview).then(() => {
+    isSettingUpContextModes = false; // Setup complete
     // Trigger initial token indicator update
     const tokenUpdateEvent = new CustomEvent("contextUpdate");
     document.dispatchEvent(tokenUpdateEvent);
@@ -1431,6 +2048,8 @@ function setupImageDrop(dropZone: HTMLElement, preview: HTMLElement): void {
 // Function to clear video subtitle cache for new pages
 export function clearVideoSubtitles(): void {
   videoSubtitles = "";
+  parsedSubtitleSegments = []; // Clear parsed segments too
+  cleanupBilibiliInterception(); // Clean up any active interception
   console.log("Video subtitles cache cleared for new page");
 }
 

@@ -100,6 +100,14 @@ async function reinitializeForNewPage() {
   console.log("Reinitializing extension for new page:", newUrl);
   currentUrl = newUrl;
 
+  // Clean up any active Bilibili interception from previous page
+  try {
+    const { cleanupBilibiliInterception } = await import("./components/context/contextModes");
+    cleanupBilibiliInterception();
+  } catch (error) {
+    console.warn("Could not cleanup Bilibili interception:", error);
+  }
+
   // Clear video subtitle cache for new page
   clearVideoSubtitles();
 

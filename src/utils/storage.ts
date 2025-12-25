@@ -92,3 +92,77 @@ export async function setChromeStorageSync(
     chrome.storage.sync.set(items, resolve);
   });
 }
+
+// Subtitle URL caching for retry functionality
+interface SubtitleCacheEntry {
+  url: string;
+  timestamp: number;
+  platform: "youtube" | "bilibili";
+  videoId: string;
+}
+
+export async function cacheSubtitleURL(
+  platform: "youtube" | "bilibili",
+  videoId: string,
+  url: string,
+): Promise<void> {
+  try {
+    const cacheKey = `subtitle_cache_${platform}_${videoId}`;
+    const entry: SubtitleCacheEntry = {
+      url,
+      timestamp: Date.now(),
+      platform,
+      videoId,
+    };
+    await saveToStorage(cacheKey, entry);
+    console.log("📦 Cached subtitle URL:", url);
+  } catch (error) {
+    console.error("Error caching subtitle URL:", error);
+  }
+}
+
+export async function getCachedSubtitleURL(
+  platform: "youtube" | "bilibili",
+  videoId: string,
+): Promise<string | null> {
+  try {
+    const cacheKey = `subtitle_cache_${platform}_${videoId}`;
+    const entry = await loadFromStorage<SubtitleCacheEntry>(cacheKey);
+    
+    if (entry && entry.url) {
+      // Check if cache is less than 24 hours old
+      const cacheAge = Date.now() - entry.timestamp;
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (cacheAge < maxAge) {
+        console.log("✅ Found cached subtitle URL:", entry.url);
+        return entry.url;
+      } else {
+        console.log("⚠️ Cached subtitle URL expired");
+        await removeFromStorage(cacheKey);
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error retrieving cached subtitle URL:", error);
+    return null;
+  }
+}
+
+export async function clearSubtitleCache(): Promise<void> {
+  try {
+    const allKeys = await chrome.storage.local.get(null);
+    const subtitleCacheKeys = Object.keys(allKeys).filter((key) =>
+      key.startsWith("subtitle_cache_"),
+    );
+    
+    for (const key of subtitleCacheKeys) {
+      await removeFromStorage(key);
+    }
+    
+    console.log("🗑️ Cleared subtitle cache");
+  } catch (error) {
+    console.error("Error clearing subtitle cache:", error);
+  }
+}
