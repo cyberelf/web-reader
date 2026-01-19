@@ -111,6 +111,13 @@ const DEFAULT_MODELS: Record<string, ModelInfo[]> = {
   ],
   gemini: [
     {
+      id: "gemini-3.0-pro",
+      name: "Gemini 3.0 Pro",
+      provider: "gemini",
+      isManual: false,
+      isVision: true,
+    },
+    {
       id: "gemini-2.5-pro-preview-05-06",
       name: "Gemini 2.5 Pro Preview",
       provider: "gemini",
@@ -684,13 +691,12 @@ export class ModelManager {
       const data = await response.json();
       const models: ModelInfo[] = data.models
         .filter((model: any) => {
-          // Filter for models that support generateContent
-          // Filter for gemini-2.5 and gemma3 as there are too many models
+          // Filter for models that support generateContent and are gemini/gemma variants
           return (
             model.supportedGenerationMethods &&
             model.name &&
-            (model.name.includes("gemini-2.5") ||
-              model.name.toLowerCase().includes("gemma3")) &&
+            (model.name.toLowerCase().includes("gemini") ||
+              model.name.toLowerCase().includes("gemma")) &&
             model.supportedGenerationMethods.includes("generateContent")
           );
         })
@@ -755,6 +761,7 @@ export class ModelManager {
       "gpt-3.5-turbo": "GPT-3.5 Turbo",
       "deepseek-chat": "DeepSeek Chat",
       "deepseek-coder": "DeepSeek Coder",
+      "gemini-3.0-pro": "Gemini 3.0 Pro",
       "gemini-2.5-pro-preview-05-06": "Gemini 2.5 Pro Preview",
       "gemini-2.5-flash-preview-05-20": "Gemini 2.5 Flash Preview",
       "gemini-2.0-flash-exp": "Gemini 2.0 Flash (Experimental)",
